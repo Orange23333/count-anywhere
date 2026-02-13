@@ -1,0 +1,15 @@
+<!DOCTYPE RCC>
+<RCC>
+    <qresource prefix="icons">
+        <file alias="Logo">assets/logo.ico</file>
+    </qresource>
+    <qresource prefix="texts">
+        <file alias="ReadMe">../README.md</file>
+    </qresource>
+    <!-- Deprecated.
+    <qresource prefix="languages">
+        <file alias="en_US">locales/en-US.yml</file>
+        <file alias="zh_CN">locales/zh-CN.yml</file>
+    </qresource>
+    -->
+</RCC>

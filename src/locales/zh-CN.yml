@@ -1,0 +1,26 @@
+app:
+  name: '随时计数'
+
+  # 名字应当符合一定的规范。
+  # 简单来说，昵称中不应包含任何脏话或政治敏感词汇。
+  # 真实姓名除外。
+  authors: '橘子233'
+  translators: '橘子233'
+action:
+  active:
+    text: '激活'
+    tool_tip: '切换激活状态。'
+  configure:
+    text: '配置'
+    tool_tip: '打开配置窗口。'
+  help:
+    text: '帮助'
+    tool_tip: '显示帮助。'
+  quit:
+    text: '退出'
+    tool_tip: '退出。'
+message:
+  status:
+    title: '状态'
+    activated: '已激活。'
+    deactivated: '已停用。'

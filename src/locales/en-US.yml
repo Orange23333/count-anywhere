@@ -1,0 +1,26 @@
+app:
+  name: 'Count Anywhere'
+
+  # The names should comply with regulations.
+  # In short, there should be no profanity or politically sensitive words in your nickname.
+  # Excluding real names.
+  authors: 'Orange 233'
+  translators: 'Orange 233'
+action:
+  active:
+    text: 'Active'
+    tool_tip: 'Toggle active status.'
+  configure:
+    text: 'Configure'
+    tool_tip: 'Open configure window.'
+  help:
+    text: 'Help'
+    tool_tip: 'Show help.'
+  quit:
+    text: 'Quit'
+    tool_tip: 'Quit.'
+message:
+  status:
+    title: 'Status'
+    activated: 'Activated.'
+    deactivated: 'Deactivated.'

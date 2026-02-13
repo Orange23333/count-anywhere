@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod
 from functools import wraps
 import inspect
 import math
 from typing import Any, Callable, Iterable, Iterator, overload, override, Self
 
 import globals_
+import path_dict
 
 
 class MarkerFactory:
@@ -16,22 +17,25 @@ class MarkerFactory:
         self._aliases: dict[str, str] = {}
 
     def create(
-        self,
-        type_name: str,
-        position: tuple[int, int],
-        /,
-        **kwargs
+            self,
+            type_name: str,
+            position: tuple[int, int],
+            /,
+            **kwargs
     ) -> Any:
         try:
             t = self._tn2t[type_name]
         except KeyError:
             raise ValueError('Unknown type name.')
 
+        raise NotImplementedError()
+
         new_marker = t(
             position,
             **kwargs
         )
 
+        return new_marker
 
     def find_type_name(self, type_: type) -> str | None:
         if not issubclass(type_, Marker):
@@ -43,7 +47,6 @@ class MarkerFactory:
             return None
 
         return tn
-
 
     def register(self, type_name: str, type_: type) -> None:
         if type_name in self._tn2t or type_ in self._t2tn:
@@ -94,17 +97,42 @@ class MarkerFactory:
             self._unlink(alias)
 
 
-class Node:
-    def __init__(
-        self,
-        name: str | None = None,
-        children: Iterable[Marker] | None = None
-    ) -> None:
-        self._name = name
-        self._children: list[Marker] | None = None if children is None else list(children)
+#region  Global configuration of markers.
 
-    class property(__builtins__.property):
-        def __init__(
+GLOBAL_KEY = 'markers'
+
+def _init_global() -> None:
+    g = globals_.get_global()
+
+    if GLOBAL_KEY not in g:
+        """
+        Initialize here:
+        """
+
+        factory = MarkerFactory()
+
+        d = {
+            'factory': factory
+        }
+        g[GLOBAL_KEY] = d
+
+
+_init_global()
+
+
+def get_global() -> dict:
+    return globals_.get_global()[GLOBAL_KEY]
+
+
+def get_factory() -> MarkerFactory:
+    g = get_global()
+    return g['factory']
+
+#endregion
+
+
+class Property(__builtins__.property):
+    def __init__(
             self,
             fget = None,
             fset = None,
@@ -114,79 +142,267 @@ class Node:
             ignored: bool = False,
             from_dict: Callable[[dict], Any] | None = None,
             to_dict: Callable[[Any], dict] | None = None,
-        ) -> None:
-            super().__init__(fget, fset, fdel, doc)
+    ) -> None:
+        super().__init__(fget, fset, fdel, doc)
 
-        name = property(lambda self: object(), lambda self, v: None, lambda self: None)  # default
-        ignored = ...
-        from_dict = ...
-        to_dict = ...
-
-    @staticmethod
-    def is_property(obj) -> bool:
-        return isinstance(obj, Node.property)
+        # TODO: Should we use __slot__ to optimize?
+        self.name = name
+        self.ignored = ignored
+        self.from_dict = from_dict
+        self.to_dict = to_dict
 
 
-    @staticmethod
-    def property(
-        name: str,
+def property(
+        name: str | None = None,
         ignored: bool = False,
-        from_dict: Callable[[dict], Any] | None = None,
-        to_dict: Callable[[Any], dict] | None = None,
-    ) -> Callable[[__builtins__.property | Callable], __builtins__.property]:
-        def decorator(x: __builtins__.property | Callable) -> __builtins__.property:
-            if isinstance(x, Callable) or inspect.isfunction(x):
-                @__builtins__.property
-                @wraps(x)
-                def wrapper(self: Node) -> Any:
-                    return x(self)
+        from_dict_like: Callable[[dict], Any] | None = None,
+        to_dict_like: Callable[[Any], dict] | None = None,
+) -> Callable[[Callable], Property]:
+    def decorator(fget: Callable[[Node], Any]) -> Property:
+        @Property
+        @wraps(fget)
+        def wrapper(self: Node) -> Any:
+            return fget(self)
 
-                p = wrapper
-            else:
-                p = x
+        p = wrapper
 
-            p._node_property_info = {
-                'name': name,
-                'ignored': ignored,
-                'from_dict': from_dict,
-                'to_dict': to_dict
-            }
+        p.name = name
+        p.ignored = ignored
+        p.from_dict = from_dict_like
+        p.to_dict = to_dict_like
 
-            return p
+        return p
 
-        return decorator
+    return decorator
+
+def is_property(obj: Any) -> bool:
+    return isinstance(obj, Property)
+
+
+class Node(metaclass=ABCMeta):
+    def __init__(
+            self,
+            name: str | None = None,
+            parent: Node | None = None,
+            children: Iterable[Node] | None = None,  # Could be None for marker nodes.
+            type_name: str | None = None  # Most of the time, it should be None.
+    ) -> None:
+        self._name: str | None = None
+        self._parent: Node | None = None
+        self._children: list[Node] | None = None
+        self._type_name: str = ''
+
+        self.__set_name(name)
+        self.__set_parent(parent)
+        self.__set_children(children)
+        self.__set_type_name(type_name)
+
+    @staticmethod
+    @abstractmethod
+    def this_type_name() -> str:
+        raise NotImplementedError()
+        # return '@node'
 
     @property(
-        name = 'name'
+        name='name'
     )
     def name(self) -> str | None:
         return self._name
+
     @name.setter
-    def name(self, name: str | None) -> None:
-        self._name = name
+    def name(self, value: str | None) -> None:
+        self.__set_name(value)
+
+    def __set_name(self, value: str | None) -> None:
+        self._name = value
 
     @property(
-        name = 'children'
+        ignored=True
     )
-    def children(self) -> list[Marker]:
+    def parent(self) -> Node | None:
+        return self._parent
+
+    @parent.setter
+    def parent(self, value: Node | None) -> None:
+        self.__set_parent(value)
+
+    def __set_parent(self, value: Node | None) -> None:
+        self._transfer_parent(value)
+
+    def _transfer_parent(self, new_parent: Node | None) -> None:
+        if self._parent is not None:
+            self._parent.remove(self)
+        self._transfer_parent_without_linkage(new_parent)
+
+    def _transfer_parent_without_linkage(self, new_parent: Node | None) -> None:
+        # Directly called when it is removing from parent.
+        self._parent = new_parent
+
+    @property(
+        name='children'
+    )
+    def children(self) -> list[Node] | None:
         return self._children
+
     @children.setter
-    def children(self, children: Iterable[Marker]) -> None:
-        self._children = list(children)
+    def children(self, value: Iterable[Node] | None) -> None:
+        self.__set_children(value)
+
+    def __set_children(self, value: Iterable[Node] | None) -> None:
+        if self._children is not None:
+            self.clear()
+        self._children = None if value is None else list(value)
+
+    @property(
+        name='type'
+    )
+    def type_name(self) -> str:
+        return self._type_name
+
+    @type_name.setter
+    def type_name(self, value: str | None = None) -> None:
+        self.__set_type_name(value)
+
+    def __set_type_name(self, value: str | None = None) -> None:
+        self._type_name = self.this_type_name() if value is None else value  # TODO: Tested, calling static method from self is work. But is it right?
+
+    @overload
+    def add(self, item: Node) -> None:
+        ...
+
+    @overload
+    def add(self, items: Iterable[Node]) -> None:
+        ...
+
+    def add(self, x: Node | Iterable[Node]) -> None:
+        # Never check whether self._children is None.
+
+        if isinstance(x, Node):
+            if x.parent != self:
+                x._transfer_parent(self)
+                self._children.append(x)
+        else:
+            for one in x:
+                self.add(one)
+
+    @overload
+    def remove(self, item: Node) -> None:
+        ...
+
+    @overload
+    def remove(self, items: Iterable[Node]) -> None:
+        ...
+
+    def remove(self, x: Node | Iterable[Node]) -> None:
+        # Never check whether self._children is None.
+
+        if isinstance(x, Node):
+            if x not in self._children:
+                raise ValueError('Not a child of this node.')
+            self._remove_one(x)
+        else:
+            for one in x:
+                if one not in self._children:
+                    raise ValueError('Not a child of this node.')
+            for one in x:
+                self._remove_one(one)
+
+    def _remove_one(self, item: Node) -> None:
+        # Never check whether self._children is None.
+
+        item._transfer_parent_without_linkage(None)
+        self._children.remove(item)
+
+    def clear(self) -> None:
+        # Never check whether self._children is None.
+
+        for child in self._children:
+            child._transfer_parent_without_linkage(None)
+        self._children.clear()
+
+    def __contains__(self, item: Node) -> bool:
+        #if not isinstance(item, Node):
+        #    return False
+
+        return item in self._children
+
+    def __iadd__(self, other: Node | Iterable[Node]) -> Self:
+        self.add(other)
+        return self
+
+    def __isub__(self, other: Node | Iterable[Node]) -> Self:
+        self.remove(other)
+        return self
+
+    def __delitem__(self, key: Node) -> None:
+        self.remove(key)
+
+    def __iter__(self) -> Iterator[Node]:
+        return iter(self._children)
+
+    def __len__(self) -> int:
+        return len(self._children)
+
+    def __pos__(self) -> Iterator[Node]:
+        return self._children.__iter__()
+
+    def __neg__(self) -> Iterator[Node]:
+        return self._children.__reversed__()
+
+    def __del__(self) -> None:
+        if self._children is not None:
+            self.clear()
+
+
+class Group(Node):
+    def __init__(
+            self,
+            name: str | None = None,
+            parent: Node | None = None,
+            children: Iterable[Node] | None = None,
+            type_name: str | None = None
+    ) -> None:
+        super().__init__(
+            name=name,
+            parent=parent,
+            children=children,
+            type_name=type_name
+        )
+
+    @override
+    @staticmethod
+    def this_type_name() -> str:
+        return '@group'
 
 
 class Marker(Node, metaclass=ABCMeta):
     def __init__(
             self,
+            name: str | None = None,
+            parent: Group | None = None,
             position: tuple[int, int] | None = None,  # TODO: Using float instead of int?
-            type_name: str | None = None,
-            tags: Iterable[str] | None = None
+            tags: Iterable[str] | None = None,
+            type_name: str | None = None
     ) -> None:
-        super().__init__(name, children = [])
+        super().__init__(
+            name=name,
+            parent=parent,
+            children=None,
+            type_name=type_name
+        )
 
-        self._position = position
-        self._type_name = self.this_type_name() if type_name is None else type_name
-        self._tags = [] if tags is None else list(tags)
+        self._position: tuple[int, int] | None = None
+        self._tags: list[str] | None = None
+
+        self.__set_position(position)
+        self.__set_tags(tags)
+
+    @override
+    @staticmethod
+    @abstractmethod
+    def this_type_name() -> str:
+        raise NotImplementedError()
+        # return '@marker'
 
     @staticmethod
     def marker(cls: type[Marker]) -> type:
@@ -196,47 +412,58 @@ class Marker(Node, metaclass=ABCMeta):
         factory = get_factory()
         factory.register(cls.this_type_name(), cls)
 
-        cls.children._node_prorperty_info['ignored'] = True
-        cls.yaml_tag = '!CountAnyWhere.Makers.' + cls.__name__
+        # TODO: cls中变量到底是全class变量还是只是初始化值？
+        # TODO: 直接移到node和marker中初始化
+        cls.children.ignored = True  # TODO: 确保实例中的ignored也是正确的。
+        cls.yaml_tag = '!CountAnywhere.Markers.' + cls.this_type_name()
 
         return cls
-
-    @staticmethod
-    @abstractmethod
-    def this_type_name() -> str:
-        raise NotImplementedError()
 
     @staticmethod
     def make_position(x: int, y: int) -> tuple[int, int]:
         return x, y
 
-    @marker_property(
+    @property(
         name='position'
     )
     def position(self) -> tuple[int, int] | None:
         return self._position
 
     @position.setter
-    def position(self, position: tuple[int, int] | None):
-        self._position = position
+    def position(self, value: tuple[int, int] | None) -> None:
+        self.__set_position(value)
 
+    def __set_position(self, value: tuple[int, int] | None) -> None:
+        self._position = value
 
-    @property
+    @property(
+        name='x',
+        ignored=True
+    )
     def x(self) -> int | None:
         return None if self._position is None else self._position[0]
 
-    @property
+    @property(
+        name='y',
+        ignored=True
+    )
     def y(self) -> int | None:
         return None if self._position is None else self._position[1]
 
-    @marker_property
-    def type_name(self) -> str:
-        return self._type_name
-
-    @marker_property
+    @property(
+        name='tags'
+    )
     def tags(self) -> list[str]:
         return self._tags
 
+    @tags.setter
+    def tags(self, value: Iterable[str] | None) -> None:
+        self.__set_tags(value)
+
+    def __set_tags(self, value: Iterable[str] | None) -> None:
+        self._tags = [] if value is None else list(value)
+
+    # TODO: To figure out how to use to_yaml and from_yaml.
     #@classmethod
     #@abstractmethod
     #def to_yaml(cls, representer, node):
@@ -256,112 +483,85 @@ class ReferenceMarker(Marker):
     """
 
     def __init__(
-        self,
-        position: tuple[int, int] | None = None,
-        rotation: float | None = None,  # in rad.
-        type_name: str | None = None,
-        tags: list[str] | None = None
+            self,
+            name: str | None = None,
+            parent: Group | None = None,  # TODO: Override property.
+            position: tuple[int, int] | None = None,
+            rotation: float | None = None,  # In rad.
+            tags: list[str] | None = None,
+            type_name: str | None = None
     ) -> None:
-        super().__init__(position, type_name=type_name, tags=tags)
+        super().__init__(
+            name=name,
+            parent=parent,
+            position=position,
+            tags=tags,
+            type_name=type_name
+        )
 
-        self._rotation = 0.0 if rotation is None else (rotation % (2 * math.pi))
+        self._rotation: float = 0.0
 
-    @Marker.marker_property
-    def rotation(self) -> float:
-        return self._rotation
+        self.__set_rotation(rotation)
 
     @override
     @staticmethod
     def this_type_name() -> str:
         return 'ref'
 
+    @property(
+        name='rotation'
+    )
+    def rotation(self) -> float:
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, value: float | None) -> None:
+        self.__set_rotation(value)
+
+    def __set_rotation(self, value: float | None) -> None:
+        self._rotation = 0.0 if value is None else (value % (2 * math.pi))
+
 
 @Marker.marker
 class CountMarker(Marker):
     def __init__(
-        self,
-        position: tuple[int, int] | None = None,
-        refers_to: ReferenceMarker | None = None,
-        type_name: str | None = None,
-        tags: list[str] | None = None
+            self,
+            name: str | None = None,
+            parent: Group | None = None,
+            position: tuple[int, int] | None = None,
+            refers_to: ReferenceMarker | None = None,
+            tags: list[str] | None = None,
+            type_name: str | None = None
     ) -> None:
-        super().__init__(position, type_name=type_name, tags=tags)
+        super().__init__(
+            name=name,
+            parent=parent,
+            position=position,
+            tags=tags,
+            type_name=type_name
+        )
 
-        self._refers_to = refers_to
+        self._refers_to: ReferenceMarker | None = None
 
-    @Marker.marker_property
-    def refers_to(self) -> ReferenceMarker | None:
-        return self._refers_to
+        self.__set_refers_to(refers_to)
 
     @override
     @staticmethod
     def this_type_name() -> str:
         return 'cnt'
 
+    @property(
+        name='refers_to'
+    )
+    def refers_to(self) -> ReferenceMarker | None:
+        return self._refers_to
 
-# TODO: Should we implement Group in Group - tree-like group?
-class Group(Node):
-    def __init__(
-        self,
-        name: str | None = None,
-        markers: Iterable[Marker] | None = None
-    ) -> None:
-        self._name = name
+    @refers_to.setter
+    def refers_to(self, value: ReferenceMarker | None) -> None:
+        self.__set_refers_to(value)
 
-        self._markers: list[Marker] = [] if markers is None else list(markers)
-
-    @property
-    def name(self) -> str | None:
-        return self._name
-
-    @property
-    def markers(self) -> list[Marker]:
-        return self._markers
-
-    def append(self, item: Marker) -> None:
-        if item in self._markers:
-            raise KeyError(f'This group already contains it.')
-
-        self._markers.append(item)
-
-    def clear(self) -> None:
-        self._markers.clear()
-
-    def extend(self, iterable: Iterable[Marker]) -> None:
-        self._markers.extend(iterable)
-
-    def remove(self, item: Marker) -> None:
-        self._markers.remove(item)
-
-    def __contains__(self, item: Marker) -> bool:
-        if not isinstance(item, Marker):
-            return False
-
-        return item in self._markers
-
-    def __iadd__(self, other: Marker) -> Self:
-        self.append(other)
-        return self
-
-    def __isub__(self, other: Marker) -> Self:
-        self.remove(other)
-        return self
-
-    def __iter__(self) -> Iterator[Marker]:
-        return iter(self._markers)
-
-    def __len__(self) -> int:
-        return len(self._markers)
-
-    def __eq__(self, other: object) -> bool:
-        if id(self) == id(other):
-            return True
-        if isinstance(other, Group):
-            return self._markers == other._markers
-        elif isinstance(other, Iterable):
-            return self._markers == other
-        else:
-            return False
+    def __set_refers_to(self, value: ReferenceMarker | None) -> None:
+        self._refers_to = value
 
 
 class MarkerDocument:
@@ -396,6 +596,8 @@ class MarkerDocument:
 
     @staticmethod
     def from_document(document: dict) -> list[Group]:
+        raise NotImplementedError()
+
         ret = []
 
         factory = get_factory()
@@ -412,9 +614,9 @@ class MarkerDocument:
                 if position is None:
                     raise ValueError('Position is None.')
                 if (
-                    position is not Iterable or
-                    len(position) != 2 or
-                    not all(isinstance(i, int) for i in position)
+                        position is not Iterable or
+                        len(position) != 2 or
+                        not all(isinstance(i, int) for i in position)
                 ):
                     raise ValueError('Invalid position.')
                 position = (position[0], position[1])
@@ -425,7 +627,7 @@ class MarkerDocument:
                     **doc_marker
                 )
 
-                group.append(marker)
+                group.add(marker)
 
             ret.append(group)
 
@@ -433,6 +635,8 @@ class MarkerDocument:
 
     @staticmethod
     def to_document(groups: Iterable[Group]) -> dict:
+        raise NotImplementedError()
+
         document = {
             'groups': []
         }
@@ -443,50 +647,26 @@ class MarkerDocument:
             doc_group = {}
 
             for marker in group:
-                doc_marker = marker.
+                pass
 
     @staticmethod
     def load(file_path: str) -> list[Group]:
-        pass
+        raise NotImplementedError()
 
     @staticmethod
-    def save(document: list[Group], file_path: str) -> None:
-        pass
+    def save(document: Iterable[Group], file_path: str) -> None:
+        raise NotImplementedError()
 
 
-#region  Global configuration of markers.
+def test():
+    marker = ReferenceMarker()
+    i = getattr(ReferenceMarker.children, 'ignored', None)
+    print(i)
+    print(type(marker.children))
 
-GLOBAL_KEY = 'markers'
+    group = Group(children=[])
+    print(group.children)
+    pass
 
-def _init_global() -> None:
-    g = globals_.get_global()
 
-    if GLOBAL_KEY not in g:
-        """
-        Initialize here:
-        """
-
-        factory = MarkerFactory()
-
-        d = {
-            'factory': MarkerFactory(),
-            'yaml_converters': [
-                #{
-                #    'type': type,
-                #    'se': se(),
-                #    'de': de()
-                #}
-            ]
-        }
-        g[GLOBAL_KEY] = d
-
-_init_global()
-
-def get_global() -> dict:
-    return globals_.get_global()[GLOBAL_KEY]
-
-def get_factory() -> MarkerFactory:
-    g = get_global()
-    return g['factory']
-
-#endregion
+test()
