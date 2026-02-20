@@ -7,7 +7,6 @@ import math
 from typing import Any, Callable, Iterable, Iterator, overload, override, Self
 
 import globals_
-import path_dict
 
 
 class MarkerFactory:

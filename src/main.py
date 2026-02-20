@@ -1,16 +1,10 @@
 import atexit
-from pathlib import Path
 import sys
-from threading import Thread
-from typing import Callable, override
 
 import pynput.keyboard
-from PySide6.QtCore import QTranslator
+#from PySide6.QtCore import QTranslator
 from PySide6.QtGui import QAction, QCloseEvent, QIcon
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSystemTrayIcon, QWidget
-import ruamel.yaml
-
-import resources
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
 from __init__ import *
 

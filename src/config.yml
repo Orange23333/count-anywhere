@@ -2,5 +2,4 @@ regular:
   locale: 'zh-CN'
 environment:
   platform:
-    os: '@auto'
-    desktop: '@auto'
+    hotkey_module: '@preserved'
