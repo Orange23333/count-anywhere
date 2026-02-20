@@ -1,5 +1,10 @@
 groups:
   - name: '@default'
     markers:
-      - pos: [0, 0]
-        type: 'ref'
+      - type: 'ref'
+        name: '@default'
+        pos: [0, 0]
+        ro: 0.0
+      - type: 'cnt'
+        pos: [ 233, 333 ]
+        ref: '@default'

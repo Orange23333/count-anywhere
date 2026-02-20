@@ -14,9 +14,7 @@ GLOBAL_NAME = '_count_anywhere'
 def _init_global() -> None:
     if GLOBAL_NAME not in globals():
         globals()[GLOBAL_NAME] = {
-            'paths': {
-                'app_path': Path(__file__).resolve().parent,
-            },
+            'paths': {},
             'version': '0.1.0'  # TODO: Get version from setup.py
         }
 
@@ -26,3 +24,10 @@ _init_global()
 
 def get_global() -> PathDict:
     return PathDict(globals()[GLOBAL_NAME])
+
+def get_paths() -> PathDict:
+    return PathDict(get_global(), 'paths')
+
+def set_app_path(path: str | Path) -> None:
+    cfg = get_paths()
+    cfg['app_path'] = path

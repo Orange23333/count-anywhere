@@ -2,15 +2,13 @@ import atexit
 import sys
 
 import pynput.keyboard
-#from PySide6.QtCore import QTranslator
 from PySide6.QtGui import QAction, QCloseEvent, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
-from __init__ import *
+from init import *
 
 exit_code: int | None = None
 app: QApplication | None = None
-#translator: QTranslator | None = None
 
 class ConfigWidget(QWidget):
     def __init__(self) -> None:

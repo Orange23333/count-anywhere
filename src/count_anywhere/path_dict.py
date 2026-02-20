@@ -123,6 +123,8 @@ class PathDict:
     def prefix(self) -> str | None:
         return self._prefix
 
+    def __contains__(self, item: str) -> bool:
+        return item in self._d
 
     def get(
             self,
@@ -139,7 +141,7 @@ class PathDict:
         )
 
     def __getitem__(self, key: str) -> Any:
-        self.get(key, always_return = False)
+        return self.get(key, always_return = False)
 
     def set(
             self,
@@ -157,6 +159,7 @@ class PathDict:
 
     def __setitem__(self, key: str, value: Any) -> None:
         self.set(key, value, allow_create=True)
+
 
     def delete(self, path: str) -> None:
         if not del_by_path(

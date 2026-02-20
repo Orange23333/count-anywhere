@@ -423,7 +423,7 @@ class Marker(Node, metaclass=ABCMeta):
         return x, y
 
     @property(
-        name='position'
+        name='pos'
     )
     def position(self) -> tuple[int, int] | None:
         return self._position
@@ -508,7 +508,7 @@ class ReferenceMarker(Marker):
         return 'ref'
 
     @property(
-        name='rotation'
+        name='ro'
     )
     def rotation(self) -> float:
         return self._rotation
@@ -549,8 +549,9 @@ class CountMarker(Marker):
     def this_type_name() -> str:
         return 'cnt'
 
+    # TODO: 如果每个都要记录ref那就太浪费存储空间了，最好搞一个group节点，可以自动设置所有子节点的ref为group的ref。
     @property(
-        name='refers_to'
+        name='ref'
     )
     def refers_to(self) -> ReferenceMarker | None:
         return self._refers_to

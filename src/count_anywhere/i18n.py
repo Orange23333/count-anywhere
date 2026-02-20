@@ -63,9 +63,6 @@ def _init_global(locale: str) -> None:
         set_locale(locale=locale)
 
 
-_init_global(locale='en-US')
-
-
 def get_translations() -> tuple[dict, dict]:
     global __i18n
 
