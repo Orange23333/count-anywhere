@@ -2,4 +2,6 @@ regular:
   locale: 'zh-CN'
 environment:
   platform:
+    os: 'windows'
+    desktop: 'windows'
     hotkey_module: '@preserved'

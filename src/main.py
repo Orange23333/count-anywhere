@@ -1,14 +1,31 @@
 import atexit
+from pathlib import Path
 import sys
 
 import pynput.keyboard
 from PySide6.QtGui import QAction, QCloseEvent, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
-from init import *
-
 exit_code: int | None = None
 app: QApplication | None = None
+
+#region Initialization
+import resources
+
+app_path: Path = Path(__file__).resolve().parent
+
+import lib.configs as configs
+config = configs.load_config(str(app_path / 'config.yml'))
+
+import lib.i18n as i18n
+tr = i18n.Translator(
+    i18n.load_locale(
+        str(app_path / 'locales'),
+        default_locale = config['i18n.locale'],
+        fallback_locale = 'zh-CN'
+    )
+)  # TODO: Auto detect locale.
+#endregion
 
 class ConfigWidget(QWidget):
     def __init__(self) -> None:
@@ -163,11 +180,6 @@ def exit_with(code: int) -> None:
 
 def main() -> None:
     global app
-
-
-
-    #translator = QTranslator()
-    #translator.load(':/languages/zh_CN')
 
     app = QApplication(sys.argv)  # TODO: Handling arguments.
     #app.installTranslator(translator)
