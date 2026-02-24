@@ -1,5 +1,6 @@
 [project]
 name = "Count Anywhere"
+version = "1.0.0"
 
 [tool.pyside6-project]
-files = [".gitignore", "LICENSE", "README.md", "TODO.md", "config.yml", "main.py", "requirements.txt", "resources.qrc"]
+files = ["main.py", "requirements.txt", "resources.qrc", "widgets/ConfigWidget.qml"]

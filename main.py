@@ -10,15 +10,15 @@ exit_code: int | None = None
 app: QApplication | None = None
 
 #region Initialization
-import resources
+import rc_resources  # Initialize Qt Resources.
 
 app_path: Path = Path(__file__).resolve().parent
 
-import lib.configs as configs
+import libs.configs as configs
 
 config = configs.load_config(str(app_path / 'config.yml'))
 
-import lib.i18n as i18n
+import libs.i18n as i18n
 
 tr = i18n.Translator(
     str(app_path / 'locales'),
