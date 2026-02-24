@@ -15,23 +15,35 @@ import resources
 app_path: Path = Path(__file__).resolve().parent
 
 import lib.configs as configs
+
 config = configs.load_config(str(app_path / 'config.yml'))
 
 import lib.i18n as i18n
+
 tr = i18n.Translator(
-    i18n.load_locale(
-        str(app_path / 'locales'),
-        default_locale = config['i18n.locale'],
-        fallback_locale = 'zh-CN'
-    )
+    str(app_path / 'locales'),
+    default_locale=config['i18n.locale'],
+    fallback_locale='zh-CN'
 )  # TODO: Auto detect locale.
 #endregion
+
 
 class ConfigWidget(QWidget):
     def __init__(self) -> None:
         super().__init__()
 
         self.setWindowTitle(tr('configure.title'))
+
+        config_page_root = [
+            {
+                'title': tr('configure.general.title'),
+                'children': [],
+                'controls': [
+                    { 'type': 'group', 'args': { 'title': tr('configure.general.title') } },
+                    { 'type': 'selection', 'args': { 'title': tr('configure.general.locale'), 'options': [ 'zh-CN', 'en-US' ] } },
+                ]
+            }
+        ]
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.hide()
@@ -124,7 +136,7 @@ class SystemTray(QSystemTrayIcon):
     def update_hotkeys(self) -> None:
         h = pynput.keyboard.GlobalHotKeys({
             '<ctrl>+<alt>+a': self.toggle_status
-        })# TODO: How to unhook global hotkeys when exit?
+        })  # TODO: How to unhook global hotkeys when exit?
 
     def toggle_status(self, status: bool | None = None) -> None:
         if status is None:

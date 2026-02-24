@@ -1,5 +1,5 @@
 regular:
-  locale: 'zh-CN'
+  locale: 'en-US'
 environment:
   platform:
     os: 'windows'
