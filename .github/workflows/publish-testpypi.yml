@@ -21,13 +21,16 @@ jobs:
       with:
         python-version: '3.12.x'
 
-    - name: 'Install 💽 pypa/build'
-      run: 'python3 -m pip install build --user'
+    - name: 'Install 💽 requirements'
+      run: 'python3 -m pip install -r src/count_anywhere/requirements.txt'
 
     - name: 'Generate 🖨 Qt resource file.'
       run: 'bash tools/make-rcc.sh'
     - name: 'Generate 🖨 requirements file.'
       run: 'bash tools/make-python-requirements.sh'
+
+    - name: 'Install 💽 pypa/build'
+      run: 'python3 -m pip install build --user'
 
     - name: 'Build 🔨'
       run: 'python3 -m build'
