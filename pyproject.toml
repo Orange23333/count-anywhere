@@ -43,7 +43,7 @@ Issues = "https://github.com/Orange23333/CountAnywhere/issues"
 #Changelog = "https://github.com/Orange23333/CountAnywhere/blob/main/CHANGELOG.md"
 
 [project.gui-scripts]
-hello = "count_anywhere:main"
+count_anywhere = "count_anywhere:main"
 
 [tool.pyside6-project]
 files = ["main.py", "requirements.txt", "resources.qrc", "widgets/ConfigWidget.qml", "widgets/about.ui"]
