@@ -484,7 +484,8 @@ CMakeLists.txt.user*
 # === Project ===
 
 /.venv/
-/rc_*.py
+rc_*.py
+requirements.txt
 
 /.idea/
 /.qtcreator/
