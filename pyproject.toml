@@ -20,14 +20,15 @@ classifiers = [
 license = "GPL-2.0-only"
 license-files = ["LICEN[CS]E*"]
 dependencies = [
-    "pynput>=1.8.1",
-    "pyside6>=6.10.2",
-    "ruamel-yaml>=0.19.1",
+    "pynput",
+    "pyside6",
+    "ruamel-yaml",
 ]
 
 [dependency-groups]
 dev = [
-    "uv>=0.10.6",
+    "pytest",
+    "uv",
 ]
 
 [project.urls]
@@ -38,7 +39,7 @@ Issues = "https://github.com/Orange23333/CountAnywhere/issues"
 #Changelog = "https://github.com/Orange23333/CountAnywhere/blob/main/CHANGELOG.md"
 
 [build-system]
-requires = ["uv_build >= 0.9.2, <0.10.0"]
+requires = ["uv_build >= 0.10.0"]
 build-backend = "uv_build"
 
 #[project.scripts]

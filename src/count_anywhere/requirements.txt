@@ -1,9 +1,0 @@
--e file:///C:/Users/87446/Work/Dev/Code/ImageShot/src/python/CountAnywhere
-pip==25.1.1
-pynput==1.8.1
-pyside6==6.10.2
-pyside6-addons==6.10.2
-pyside6-essentials==6.10.2
-ruamel-yaml==0.19.1
-shiboken6==6.10.2
-six==1.17.0
