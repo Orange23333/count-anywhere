@@ -485,12 +485,7 @@ CMakeLists.txt.user*
 
 /.venv/
 rc_*.py
-requirements.txt
 
 /.idea/
 /.qtcreator/
 /.vscode/
-
-# uv
-.python-version
-/dist/

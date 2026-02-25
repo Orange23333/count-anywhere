@@ -28,8 +28,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest",
-    "pytest-cov",
-    "uv",
+    "pytest-cov"
 ]
 
 [project.urls]
@@ -38,13 +37,6 @@ Repository = "https://github.com/Orange23333/CountAnywhere"
 #Documentation = "https://github.com/Orange23333/CountAnywhere/blob/main/docs/"
 Issues = "https://github.com/Orange23333/CountAnywhere/issues"
 #Changelog = "https://github.com/Orange23333/CountAnywhere/blob/main/CHANGELOG.md"
-
-[build-system]
-requires = ["uv_build >= 0.10.0"]
-build-backend = "uv_build"
-
-#[project.scripts]
-#count-anywhere = "count_anywhere:main"
 
 [project.gui-scripts]
 hello = "count_anywhere:main"
