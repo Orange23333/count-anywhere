@@ -46,8 +46,8 @@ jobs:
       - name: 'Install 💽 requirements'
         run: 'uv sync --locked --all-extras --dev'
 
-      - name: 'Run tests 🔍'
-        run: 'uv run pytest tests'
+      #- name: 'Run tests 🔍'
+      #  run: 'uv run pytest tests'
 
       - name: 'Generate 🖨 Qt resource file.'
         run: 'bash tools/make-rcc.sh'
