@@ -14,11 +14,9 @@ import rc_resources  # Initialize Qt Resources.
 
 app_path: Path = Path(__file__).resolve().parent
 
-import libs.configs as configs
+from count_anywhere import libs as configs, libs as i18n
 
 config = configs.load_config(str(app_path / 'config.yml'))
-
-import libs.i18n as i18n
 
 tr = i18n.Translator(
     str(app_path / 'locales'),

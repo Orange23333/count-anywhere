@@ -1,6 +1,51 @@
 [project]
-name = "Count Anywhere"
+name = "count-anywhere"
 version = "1.0.0"
+authors = [
+  { name="Orange 233", email="orange_233@foxmail.com" },
+]
+description = "A tool for counting anything easily."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+keywords = ["count", "counting", "counter", "tool", "countanywhere", "count anywhere"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    #"Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: X11 Applications :: Qt",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Natural Language :: English",
+    "Natural Language :: Chinese (Simplified)"
+]
+license = "GPL-2.0-only"
+license-files = ["LICEN[CS]E*"]
+dependencies = [
+    "pynput>=1.8.1",
+    "pyside6>=6.10.2",
+    "ruamel-yaml>=0.19.1",
+]
+
+[dependency-groups]
+dev = [
+    "uv>=0.10.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/Orange23333/CountAnywhere"
+Repository = "https://github.com/Orange23333/CountAnywhere"
+#Documentation = "https://github.com/Orange23333/CountAnywhere/blob/main/docs/"
+Issues = "https://github.com/Orange23333/CountAnywhere/issues"
+#Changelog = "https://github.com/Orange23333/CountAnywhere/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["uv_build >= 0.9.2, <0.10.0"]
+build-backend = "uv_build"
+
+#[project.scripts]
+#count-anywhere = "count_anywhere:main"
+
+[project.gui-scripts]
+hello = "count_anywhere:main"
 
 [tool.pyside6-project]
-files = ["main.py", "requirements.txt", "resources.qrc", "widgets/ConfigWidget.qml"]
+files = ["main.py", "requirements.txt", "resources.qrc", "widgets/ConfigWidget.qml", "widgets/about.ui"]

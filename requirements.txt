@@ -1,7 +1,0 @@
-PySide6
-
-ruamel.yaml
-
-#keyboard           # Doesn't work.
-#global-hotkeys     # Newer than `keyboard` package, but only support Windows.
-pynput
