@@ -6,7 +6,7 @@ authors = [
 ]
 description = "A tool for counting anything easily."
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.9"
+requires-python = ">=3.9"  # I don't know which version is the lowest.
 keywords = ["count", "counting", "counter", "tool", "countanywhere", "count anywhere"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -24,6 +24,10 @@ dependencies = [
     "pyside6",
     "ruamel-yaml",
 ]
+
+[build-system]
+requires = ["uv_build >= 0.9.17, <0.10.0"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
