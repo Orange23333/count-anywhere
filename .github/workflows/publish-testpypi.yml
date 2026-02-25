@@ -21,8 +21,10 @@ jobs:
       with:
         python-version: '3.12.x'
 
-    #- name: 'Install 💽 requirements'
-    #  run: 'python3 -m pip install -r src/count_anywhere/requirements.txt'
+    - name: 'Install 💽 requirements'
+      run: 'python3 -m pip install -r src/count_anywhere/requirements.txt'
+    - name: 'Install 💽 requirements (dev)'
+      run: 'python3 -m pip install -r src/count_anywhere/requirements.dev.txt'
 
     - name: 'Generate 🖨 Qt resource file.'
       run: 'bash tools/make-rcc.sh'
