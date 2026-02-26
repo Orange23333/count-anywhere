@@ -2,9 +2,13 @@
 
 A tool for counting anything easily.
 
-# Installation
+# Quick Start
 
 ```shell
+# Installation
 python -m pip install count-anywhere
 python -m count_anywhere
+
+# Boot
+count_anywhere
 ```
