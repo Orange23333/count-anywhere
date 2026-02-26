@@ -25,15 +25,16 @@ dependencies = [
     "ruamel-yaml >= 0.19.0",
 ]
 
-[build-system]
-requires = ["uv_build >= 0.10.0"]
-build-backend = "uv_build"
-
 [dependency-groups]
 dev = [
     "pytest >= 9.0.0",
-    "pytest-cov >= 7.0.0"
+    "pytest-cov >= 7.0.0",
+    "ruff >= 0.15.0"
 ]
+
+[build-system]
+requires = ["uv_build >= 0.10.0"]
+build-backend = "uv_build"
 
 [project.urls]
 Homepage = "https://github.com/Orange23333/CountAnywhere"
@@ -47,8 +48,3 @@ count_anywhere = "count_anywhere:main"
 
 [tool.pyside6-project]
 files = ["main.py", "requirements.txt", "resources.qrc", "widgets/ConfigWidget.qml", "widgets/about.ui"]
-
-[tool.pytest.ini_options]
-testpaths = [
-    "tests"
-]

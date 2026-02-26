@@ -1,0 +1,23 @@
+src = ['src']
+exclude = [
+    '*.qml',
+    '*.txt',
+    '*.yml'
+]
+
+line-length = 88
+#indent-width = 4
+
+[format]
+line-ending = "auto"
+indent-style = "tab"
+quote-style = "signle"
+
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+skip-magic-trailing-comma = false
+
+[lint.isort]
+case-sensitive = true
+combine-as-imports = false
