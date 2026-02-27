@@ -4,6 +4,8 @@ import sys
 
 import pynput.keyboard
 from PySide6.QtGui import QAction, QCloseEvent, QIcon
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuick import QQuickView
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
 exit_code: int | None = None
@@ -12,14 +14,15 @@ app: QApplication | None = None
 #region Initialization
 import rc_resources  # Initialize Qt Resources.
 
-app_path: Path = Path(__file__).resolve().parent
+app_dir: Path = Path(__file__).resolve().parent
 
-from count_anywhere import libs as configs, libs as i18n
+from count_anywhere.libs import configs as configs
+from count_anywhere.libs import i18n as i18n
 
-config = configs.load_config(str(app_path / 'config.yml'))
+config = configs.load_config(str(app_dir / 'config.yml'))
 
 tr = i18n.Translator(
-    str(app_path / 'locales'),
+    str(app_dir / 'locales'),
     default_locale=config['i18n.locale'],
     fallback_locale='zh-CN'
 )  # TODO: Auto detect locale.
@@ -194,6 +197,17 @@ def main() -> None:
     app = QApplication(sys.argv)  # TODO: Handling arguments.
     #app.installTranslator(translator)
     app.setQuitOnLastWindowClosed(False)
+
+    #engine = QQmlApplicationEngine()
+    #engine.load(str(app_path / 'widgets' / 'main.qml'))
+    #if not engine.rootObjects():
+    #    exit_with(-1)
+
+    view = QQuickView()
+    view_path = str(app_dir / 'widgets' / 'test.qml')
+    view.setSource(view_path)
+    view.setResizeMode(QQuickView.SizeRootObjectToView)
+    view.show()
 
     tray = SystemTray()
     tray.show()

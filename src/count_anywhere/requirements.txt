@@ -1,3 +1,4 @@
+#global-hotkeys
 pynput
 pyside6
 ruamel-yaml
