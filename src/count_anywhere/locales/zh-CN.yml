@@ -6,21 +6,33 @@ app:
   # 真实姓名除外。
   authors: '橘子233'
   translators: '橘子233'
-action:
+
+# === 语句 ===
+activated: '已激活。'
+authors_with_value: '作者：{authors}'
+deactivated: '已停用。'
+version_with_value: '版本：{version}'
+
+# === 词汇 ===
+about: '关于'
+active: '激活'
+configure: '配置'
+general: '通用'
+help: '帮助'
+hotkeys: '快捷键'
+language: '语言'
+localization: '本地化'
+quit: '退出'
+status: '状态'
+
+actions:
+  about:
+    tool_tip: '显示关于窗口。'
   active:
-    text: '激活'
     tool_tip: '切换激活状态。'
   configure:
-    text: '配置'
     tool_tip: '打开配置窗口。'
   help:
-    text: '帮助'
     tool_tip: '显示帮助。'
   quit:
-    text: '退出'
     tool_tip: '退出。'
-message:
-  status:
-    title: '状态'
-    activated: '已激活。'
-    deactivated: '已停用。'

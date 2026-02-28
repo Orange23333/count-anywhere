@@ -115,6 +115,7 @@ def load_config(config_path: str) -> dict:
 
     ret = {}
 
+    # TODO: 支持分割线
     config_handlers = [
         {
             'path': 'regular.locale',

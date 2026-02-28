@@ -1,6 +1,9 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
+
 import ruamel.yaml
 
 
@@ -22,10 +25,16 @@ def _load_locale(locales_dir: str, locale: str) -> Translation:
     )
 
 
-def get_available_locales(locales_dir: str) -> list[str]:
-    d = Path(locales_dir).resolve()
+def get_available_locales(locales_dir: str) -> list[dict]:
+    #d = Path(locales_dir).resolve()
+    #return [ f.stem for f in d.iterdir() if f.is_file() and f.suffix == '.yml' ]
 
-    return [ f.stem for f in d.iterdir() if f.is_file() and f.suffix == '.yml' ]
+    d = Path(locales_dir).resolve()
+    y = ruamel.yaml.YAML(typ='safe')
+
+    t = y.load(d / 'available_locales.yml')
+
+    return t
 
 
 class Translator:
@@ -40,7 +49,7 @@ class Translator:
         self._t = _load_locale(locales_dir, default_locale)
         self._ft = _load_locale(locales_dir, fallback_locale)
 
-        self._on_update_handlers = []
+        self._on_update_handlers: list[Callable[[Translator], None]] = []
 
     def update_with(
             self,
@@ -58,7 +67,7 @@ class Translator:
 
         if changed:
             for handler in self._on_update_handlers:
-                handler()
+                handler(self)
 
     @staticmethod
     def _tr(t: Translation, path: str, **kwargs) -> str | None:
@@ -81,6 +90,18 @@ class Translator:
                 #return path
 
         return ret
+
+    def __call__(self, path: str, **kwargs) -> str:
+        return self.tr(path, **kwargs)
+
+class NullableTranslator:
+    def __init__(self, tr: Translator | None):
+        self._tr = tr
+
+    def tr(self, path: str, **kwargs) -> str:
+        if self._tr is None:
+            return path
+        return self._tr.tr(path, **kwargs)
 
     def __call__(self, path: str, **kwargs) -> str:
         return self.tr(path, **kwargs)

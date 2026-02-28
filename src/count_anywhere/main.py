@@ -2,14 +2,15 @@ import atexit
 from pathlib import Path
 import sys
 
-import pynput.keyboard
-from PySide6.QtGui import QAction, QCloseEvent, QIcon
-from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtQuick import QQuickView
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
+#from PySide6.QtQml import QQmlApplicationEngine
+#from PySide6.QtQuick import QQuickView
+from PySide6.QtWidgets import QApplication
 
-exit_code: int | None = None
+import count_anywhere.libs.utils as utils
+from count_anywhere.widgets import AboutWindow, SystemTray
+
 app: QApplication | None = None
+exit_code: int | None = None
 
 #region Initialization
 import rc_resources  # Initialize Qt Resources.
@@ -19,155 +20,14 @@ app_dir: Path = Path(__file__).resolve().parent
 from count_anywhere.libs import configs as configs
 from count_anywhere.libs import i18n as i18n
 
-config = configs.load_config(str(app_dir / 'config.yml'))
+config = configs.load_config(utils.get_config_path(str(app_dir)))
 
-tr = i18n.Translator(
-    str(app_dir / 'locales'),
+tr: i18n.Translator = i18n.Translator(
+    utils.get_locales_dir(str(app_dir)),
     default_locale=config['i18n.locale'],
     fallback_locale='zh-CN'
 )  # TODO: Auto detect locale.
 #endregion
-
-
-class ConfigWidget(QWidget):
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.setWindowTitle(tr('configure.title'))
-
-        config_page_root = [
-            {
-                'title': tr('configure.general.title'),
-                'children': [],
-                'controls': [
-                    { 'type': 'group', 'args': { 'title': tr('configure.general.title') } },
-                    { 'type': 'selection', 'args': { 'title': tr('configure.general.locale'), 'options': [ 'zh-CN', 'en-US' ] } },
-                ]
-            }
-        ]
-
-    def closeEvent(self, event: QCloseEvent) -> None:
-        self.hide()
-
-        event.ignore()
-
-
-class SystemTray(QSystemTrayIcon):
-    def __init__(self) -> None:
-        super().__init__(QIcon(':/icons/Logo'))
-
-        self.__status: bool = False
-
-        self.setToolTip(tr('app.name'))
-
-        # 创建托盘的右键菜单
-        self.__menu = QMenu()
-
-        actions = [
-            {
-                'name': 'active',
-                'text': tr('action.active.text'),
-                'args': {
-                    'checkable': True,
-                    'toolTip': tr('action.active.tool_tip')
-                },
-                'callback': self.toggle_status
-            },
-            {
-                'name': 'configure',
-                'text': tr('action.configure.text'),
-                'args': {
-                    'toolTip': tr('action.configure.tool_tip')
-                },
-                'callback': self.show_config_window
-            },
-            {
-                'name': 'help',
-                'text': tr('action.help.text'),
-                'args': {
-                    'toolTip': tr('action.help.tool_tip')
-                },
-                'callback': self.show_help
-            },
-            {
-                'name': 'quit',
-                'text': tr('action.quit.text'),
-                'args': {
-                    'toolTip': tr('action.quit.tool_tip')
-                },
-                'callback': self.quit
-            }
-        ]
-        self.__actions = {}
-        for action in actions:
-            new_action = QAction(
-                action['text'],
-                **action['args']
-            )
-            new_action.triggered.connect(action['callback'])
-
-            self.__menu.addAction(new_action)
-            self.__actions[action['name']] = new_action
-
-        self.setContextMenu(self.__menu)
-
-        self.activated.connect(self.on_activated)
-
-        self.toggle_status(True)
-        self.update_hotkeys()
-
-    def on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
-        match reason:
-            case QSystemTrayIcon.ActivationReason.Trigger:
-                # Left Clicked.
-                self.show_ui()
-            case QSystemTrayIcon.ActivationReason.Context:
-                # Right Clicked.
-                pass
-            case QSystemTrayIcon.ActivationReason.DoubleClick:
-                # Double Clicked.
-                pass
-            case QSystemTrayIcon.ActivationReason.MiddleClick:
-                # Middle Clicked.
-                pass
-            case QSystemTrayIcon.ActivationReason.Unknown | _:
-                pass
-                #raise RuntimeError('Unknown reason.')
-
-    def update_hotkeys(self) -> None:
-        h = pynput.keyboard.GlobalHotKeys({
-            '<ctrl>+<alt>+a': self.toggle_status
-        })  # TODO: How to unhook global hotkeys when exit?
-
-    def toggle_status(self, status: bool | None = None) -> None:
-        if status is None:
-            status = not self.__status
-
-        self.__status = status
-
-        self.__actions['active'].setChecked(status)
-
-        self.showMessage(
-            tr('message.status.title'),
-            tr('message.status.' + ('activated' if status else 'deactivated')),
-            icon=QSystemTrayIcon.MessageIcon.Information,
-            msecs=3000
-        )
-
-    def show_ui(self) -> None:
-        pass
-
-    def show_config_window(self) -> None:
-        pass
-
-    def show_help(self) -> None:
-        pass
-
-    def quit(self) -> None:
-        global app
-
-        exit_with(0)
-
 
 @atexit.register
 def exit_() -> None:
@@ -193,6 +53,9 @@ def exit_with(code: int) -> None:
 
 def main() -> None:
     global app
+    global config
+    global exit_code
+    global tr
 
     app = QApplication(sys.argv)  # TODO: Handling arguments.
     #app.installTranslator(translator)
@@ -203,13 +66,13 @@ def main() -> None:
     #if not engine.rootObjects():
     #    exit_with(-1)
 
-    view = QQuickView()
-    view_path = str(app_dir / 'widgets' / 'test.qml')
-    view.setSource(view_path)
-    view.setResizeMode(QQuickView.SizeRootObjectToView)
-    view.show()
+    #view = QQuickView()
+    #view_path = str(app_dir / 'widgets' / 'something.qml')
+    #view.setSource(view_path)
+    #view.setResizeMode(QQuickView.SizeRootObjectToView)
+    #view.show()
 
-    tray = SystemTray()
+    tray = SystemTray(exit_with, str(app_dir), config, tr)
     tray.show()
 
     exit_code = app.exec()

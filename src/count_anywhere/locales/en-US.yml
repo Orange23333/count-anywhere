@@ -6,7 +6,7 @@ app:
   # Excluding real names.
   authors: 'Orange 233'
   translators: 'Orange 233'
-action:
+actions:
   active:
     text: 'Active'
     tool_tip: 'Toggle active status.'
@@ -19,7 +19,7 @@ action:
   quit:
     text: 'Quit'
     tool_tip: 'Quit.'
-message:
+messages:
   status:
     title: 'Status'
     activated: 'Activated.'
