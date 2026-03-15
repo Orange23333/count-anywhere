@@ -7,7 +7,8 @@ import pynput.keyboard
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon, QWidget
 
-from count_anywhere.libs.i18n import Translator
+from count_anywhere.libs.data_bindings import bind_translated_text
+from count_anywhere.libs.i18n import Translator, on_translation_updated
 import count_anywhere.libs.utils as utils
 from count_anywhere.widgets import AboutWindow, ConfigWindow
 
@@ -32,63 +33,95 @@ class SystemTray(QSystemTrayIcon):
         self.__config_window = None
         self.__status: bool = False  # TODO: 应当为全局变量
 
-        self.setToolTip(self.__tr('app.name'))
+        self.__data_binding_removers = []
+        self.__textses = []
+
+        #self.setToolTip('app.name')
+        self.__data_binding_removers.append(
+            bind_translated_text(
+                self.__tr,
+                'app.name',
+                self,
+                lambda w, t: w.setToolTip(t)
+            )
+        )
 
         self.__menu = QMenu()
 
         actions = [
             {
+                'name': 'count_now',
+                'text': 'count_now',
+                'args': {
+                    'toolTip': 'actions.count_now.tool_tip'
+                },
+                'callback': self.start_new_count
+            },
+            {
                 'name': 'active',
-                'text': self.__tr('active'),
+                'text': 'active',
                 'args': {
                     'checkable': True,
-                    'toolTip': self.__tr('actions.active.tool_tip')
+                    'toolTip': 'actions.active.tool_tip'
                 },
                 'callback': self.toggle_status
             },
+            { 'type': 'separator' },
             {
                 'name': 'configure',
-                'text': self.__tr('configure'),
+                'text': 'configure',
                 'args': {
-                    'toolTip': self.__tr('actions.configure.tool_tip')
+                    'toolTip': 'actions.configure.tool_tip'
                 },
                 'callback': self.show_config_window
             },
+            { 'type': 'separator' },
             {
                 'name': 'help',
-                'text': self.__tr('help'),
+                'text': 'help',
                 'args': {
-                    'toolTip': self.__tr('actions.help.tool_tip')
+                    'toolTip': 'actions.help.tool_tip'
                 },
                 'callback': self.show_help
             },
             {
                 'name': 'about',
-                'text': self.__tr('about'),
+                'text': 'about',
                 'args': {
-                    'toolTip': self.__tr('actions.about.tool_tip')
+                    'toolTip': 'actions.about.tool_tip'
                 },
                 'callback': self.show_about
             },
+            { 'type': 'separator' },
             {
                 'name': 'quit',
-                'text': self.__tr('quit'),
+                'text': 'quit',
                 'args': {
-                    'toolTip': self.__tr('actions.quit.tool_tip')
+                    'toolTip': 'actions.quit.tool_tip'
                 },
                 'callback': self.quit
             }
         ]
         self.__actions = {}
         for action in actions:
-            new_action = QAction(
-                action['text'],
-                **action['args']
-            )
-            new_action.triggered.connect(action['callback'])
+            if 'type' in action and action['type'] == 'separator':
+                self.__menu.addSeparator()
+            else:
+                new_action = QAction(
+                    action['text'],
+                    **action['args']
+                )
+                new_action.triggered.connect(action['callback'])
 
-            self.__menu.addAction(new_action)
-            self.__actions[action['name']] = new_action
+                self.__menu.addAction(new_action)
+                self.__actions[action['name']] = new_action
+                self.__textses.append({
+                    'obj': new_action,
+                    'texts': {
+                        'text': action['text'],
+                        'tool_tip': action['args']['toolTip']
+                    }
+                })
 
         self.setContextMenu(self.__menu)
 
@@ -96,6 +129,26 @@ class SystemTray(QSystemTrayIcon):
 
         self.toggle_status(True)
         self.update_hotkeys()
+
+        self._on_translator_updated(self.__tr)
+        self.__tr.on_update_handlers.append(self._on_translator_updated)
+
+    def __del__(self) -> None:
+        for remover in self.__data_binding_removers:
+            remover()
+
+    def _on_translator_updated(self, tr: Translator) -> None:
+        self.__tr = tr
+
+        #self.setToolTip(self.__tr('app.name'))
+
+        for item in self.__textses:
+            w = item['obj']
+            texts = item['texts']
+
+            if isinstance(w, QAction):
+                w.setText(self.__tr(texts['text']))
+                w.setToolTip(self.__tr(texts['tool_tip']))
 
     def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         match reason:
@@ -120,6 +173,9 @@ class SystemTray(QSystemTrayIcon):
         #h = pynput.keyboard.GlobalHotKeys({
         #    '<cself.__trl>+<alt>+a': self.toggle_status
         #})  # TODO: How to unhook global hotkeys when exit?
+
+    def show_ui(self) -> None:
+        pass
 
     def toggle_status(self, status: bool | None = None) -> None:
         if status is None:
@@ -146,7 +202,7 @@ class SystemTray(QSystemTrayIcon):
 
         sender.deleteLater()
 
-    def show_ui(self) -> None:
+    def start_new_count(self) -> None:
         pass
 
     def show_config_window(self) -> None:
