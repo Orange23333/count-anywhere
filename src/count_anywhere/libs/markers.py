@@ -1,97 +1,151 @@
 from __future__ import annotations
 
-import warnings
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
+import builtins
 from functools import wraps
 import inspect
 import math
 from typing import Any, Callable, Iterable, Iterator, overload, override, Self
+from typing_extensions import ReadOnly
+import warnings
 
-import ruamel.yaml as yaml
+from any_singleton import singleton_instance as sgt_i
 
-from any_singleton import singleton_instance as sgt_i, singleton_value as sgt_v
-
-from count_anywhere.libs.object_managers import TypeManager
-
-
-class NodeFactory(TypeManager[str]):
-    type_checked = None
-
-    def __init__(self) -> None:
-        super().__init__(enable_fast_reserved_query = False)
-
-    @staticmethod
-    def __type_checker(t: type) -> None:
-        if not issubclass(t, NodeFactory.type_checked):
-            raise TypeError("Must be a subclass of Node.")
-
-    @override
-    def contains_type(self, t: type) -> bool:
-        NodeFactory.__type_checker(t)
-        return super().contains_type(t)
-
-    @override
-    def find_id(self, t: type) -> str | None:
-        NodeFactory.__type_checker(t)
-        return super().find_id(t)
-
-    @override
-    def register(self, id_: str, t: type) -> None:
-        NodeFactory.__type_checker(t)
-        super().register(id_, t)
+from count_anywhere import sgt_dns
+from count_anywhere.libs.collections import TypeManager
 
 
-_FACTORY_DN: str = 'count_anywhere.markers.factory'
-_factory: NodeFactory = sgt_i(_FACTORY_DN, NodeFactory)
-
-
-class NodeProperty(__builtins__.property):
+class NodeProperty(builtins.property):
     def __init__(
             self,
             fget = None,
             fset = None,
             fdel = None,
             doc = None,
-            name: str | None = None,
+            name: str | None = None,  # Using `__set_name__()` to implement automatically filling name.
             ignored: bool = False,
+            optional: bool = False,
+            default: Any | None = None,
             recursive_construction: bool = False,
-            from_dict_like: Callable[[dict], Any] | None = None,
-            to_dict_like: Callable[[Any], dict] | None = None
-    ) -> None:
-        # if name is None:
-        #    raise ValueError("`name` must be specified.")
+            from_dict_like: Callable[[dict], Any] | None = None,  # TODO: Never tested!
+            to_dict_like: Callable[[Any], dict] | None = None  # TODO: Never tested!
+    ) -> None:  # TODO: Add default and optional.
+        """
+        Property attribute of nodes.
+
+        :param fget: function to be used for getting an attribute value.
+
+        :param fset: function to be used for setting an attribute value.
+
+        :param fdel: function to be used for del'ing an attribute.
+
+        :param doc: docstring.
+
+        :param name:
+        The name (key) of the property.
+        It will be used to store and query the value of property in the file.
+
+        :param ignored:
+        If True, the property will be ignored.
+        Typically used for inhibiting the property inherit from the parent node.
+
+        :param optional:
+        If True, the property is optional.
+        If False, the property is required. If not found, it will raise a LookupError('`{name}` is required.').
+
+        :param default:
+        The default value of the property.
+        This value will only be used to assignment at loading a file.
+
+        :param recursive_construction:
+        If True, the property will be recursively constructed.
+        If False, the property will be constructed only once.
+        By the way, if specified `from_dict_like` and `to_dict_like`, this parameter will be ignored.
+
+        :param from_dict_like:
+        A function that will be used to construct the property from a dict-like object.
+
+        :param to_dict_like:
+        A function that will be used to convert the property to a dict-like object.
+        """
+
+        # TODO: 暂不支持自动动态注册——在node注册后再增加property。因为目前是由@node修饰器进行自动注册的。
+
+        if ignored and (
+            optional is True or
+            default is not None or
+            recursive_construction is True or
+            from_dict_like is not None or
+            to_dict_like is not None
+        ):
+            warnings.warn('This property has been ignored. Other parameters will not be used.')
 
         has_from_dict = from_dict_like is not None
         has_to_dict = to_dict_like is not None
         if has_from_dict and has_to_dict and recursive_construction:
             warnings.warn('If specified `from_dict_like` and `to_dict_like`, `recursive_construction` is ignored.')
-        if (has_from_dict or has_to_dict) and (has_from_dict != has_to_dict):
+        if (has_from_dict or has_to_dict) and not (has_from_dict and has_to_dict):
             raise ValueError('If specified `from_dict_like` and `to_dict_like`, both must be specified.')
 
         super().__init__(fget, fset, fdel, doc)
 
         # TODO: Should we use __slot__ to optimize?
-        self.name = name
-        self.ignored = ignored
-        self.recursive_construction = recursive_construction
-        self.from_dict_like = from_dict_like
-        self.to_dict_like = to_dict_like
+        self.name: ReadOnly[str | None] = name
+        self.ignored: ReadOnly[bool] = ignored
+        self.optional: ReadOnly[bool] = optional
+        self.default: ReadOnly[Any | None] = default
+        self.recursive_construction: ReadOnly[bool] = recursive_construction
+        self.from_dict_like: ReadOnly[Callable[[dict], Any]] = from_dict_like
+        self.to_dict_like: ReadOnly[Callable[[Any], dict]] = to_dict_like
+
+    @override
+    def getter(self, f: Callable) -> NodeProperty:
+        return self.__new(fget=f, fset=self.fset, fdel=self.fdel)
+
+    @override
+    def setter(self, f: Callable) -> NodeProperty:
+        return self.__new(fget=self.fget, fset=f, fdel=self.fdel)
+
+    @override
+    def deleter(self, f: Callable) -> NodeProperty:
+        return self.__new(fget=self.fget, fset=self.fset, fdel=f)
+
+    def __new(self, fget: Callable, fset: Callable, fdel: Callable) -> NodeProperty:
+        return NodeProperty(
+            fget=fget,
+            fset=fset,
+            fdel=fdel,
+            doc=self.__doc__,
+            name=self.name,
+            ignored=self.ignored,
+            optional=self.optional,
+            default=self.default,
+            recursive_construction=self.recursive_construction,
+            from_dict_like=self.from_dict_like,
+            to_dict_like=self.to_dict_like
+        )
+
+    def __set_name__(self, owner: Any, name: str) -> None:
+        self._owner: ReadOnly[Any] = owner
+        self._name_in_owner: ReadOnly[str] = name
+
+        super().__set_name__(owner, name)
 
 
-@dataclass
-class NodeMeta:
-    properties: list[NodeProperty]
+    def __getattribute__(self, name: str) -> Any:
+        return super().__getattribute__(name)
 
-
-_NODE_PROPERTIES_DN: str = 'count_anywhere.markers.node_properties'
-_node_properties: dict[str, NodeMeta] = sgt_i(_NODE_PROPERTIES_DN, dict[str, NodeMeta])
+    @staticmethod
+    def __call__(*args, **kwargs) -> NodeProperty:
+        return object.__new__(NodeProperty, *args, **kwargs)
 
 
 # TODO: Add default_value?
 def node_property(
         name: str | None = None,
         ignored: bool = False,
+        optional: bool = False,
+        default: Any | None = None,
         recursive_construction: bool = False,
         from_dict_like: Callable[[dict], Any] | None = None,
         to_dict_like: Callable[[Any], dict] | None = None,
@@ -105,6 +159,8 @@ def node_property(
             fget = wrapper,
             name = name,
             ignored = ignored,
+            optional = optional,
+            default = default,
             recursive_construction = recursive_construction,
             from_dict_like = from_dict_like,
             to_dict_like = to_dict_like
@@ -143,10 +199,16 @@ class Node(metaclass=ABCMeta):
         raise NotImplementedError()
         # return '@node'
 
+    @property
+    def yaml_tag(self) -> str:
+        return '!CountAnywhere.Nodes.' + self.this_type_name()  # TODO: 不知道有没有用？
+
     @node_property(
-        name='name'
+        name='name',
+        optional=True,
+        default=None
     )
-    def name(self) -> str | None:
+    def name(self) -> str | None:  # TODO: 匿名节点——分配一个唯一的anonym_xxx名称。
         return self.__name
 
     @name.setter
@@ -180,6 +242,8 @@ class Node(metaclass=ABCMeta):
 
     @node_property(
         name='children',
+        optional=True,
+        default=None,
         recursive_construction=True
     )
     def children(self) -> list[Node] | None:
@@ -195,7 +259,8 @@ class Node(metaclass=ABCMeta):
         self.__children = None if value is None else list(value)
 
     @node_property(
-        name='type'
+        name='type',
+        optional=False
     )
     def type_name(self) -> str:
         return self.__type_name
@@ -296,76 +361,118 @@ class Node(metaclass=ABCMeta):
         if self.__children is not None:
             self.clear()
 
+
+class NodeFactory(TypeManager[str]):
+    def __init__(self) -> None:
+        super().__init__(enable_fast_reserved_query = False)
+
     @staticmethod
-    def node(cls: Any) -> Any:
-        global _factory
+    def __type_checker(t: type) -> None:
+        if not issubclass(t, Node):
+            raise TypeError("Must be a subclass of Node.")
 
-        if not inspect.isclass(cls):
-            raise TypeError('This decorator can only be applied to classes.')
-        if not issubclass(cls, Node):
-            raise TypeError('This decorator can only be applied to classes that inherit from Node.')
+    @override
+    def contains_type(self, t: type) -> bool:
+        NodeFactory.__type_checker(t)
+        return super().contains_type(t)
 
-        cls.yaml_tag = '!CountAnywhere.Nodes.' + cls.this_type_name()
+    @override
+    def find_id(self, t: type) -> str | None:
+        NodeFactory.__type_checker(t)
+        return super().find_id(t)
 
-        _factory.register(cls.this_type_name(), cls)
+    @override
+    def register(self, id_: str, t: type) -> None:
+        NodeFactory.__type_checker(t)
+        super().register(id_, t)
 
-        return cls
-
-    # TODO: Never tested.
     @staticmethod
     def from_dict_like(root: dict) -> Node:
         global _factory
 
         typ = root['type']
         cls = _factory.find_type(typ)  # Get prototype.
-        props = {}
+
+        root_node = _factory.create(typ)
 
         for prop in dir(cls):
             prop = getattr(cls, prop)
-            if isinstance(prop, NodeProperty) and prop.name is not None:
+            if isinstance(prop, NodeProperty) and not prop.ignored:
+                if prop.name is None:
+                    warnings.warn('`name` is None, but `ignore` is False. Has been ignored.')
+                    continue
+
+                def _set(value: Any) -> None:
+                    setattr(root_node, prop._name_in_owner, value)
+
                 if prop.name in root:
-                    if prop.name == 'parent':
-                        raise KeyError('Specified `parent` here is illegal.')
+                    p = root[prop.name]
+
                     if prop.from_dict_like is None:
                         if prop.recursive_construction:
                             sub_nodes = []
-                            for sub_node in root[prop.name]:
-                                sub_nodes.append(Node.from_dict_like(sub_node))
-                            props[prop.name] = sub_nodes
+                            for sub_node in p:
+                                sub_nodes.append(NodeFactory.from_dict_like(sub_node))
+                            _set(sub_nodes)
                         else:
-                            props[prop.name] = root[prop.name]
+                            _set(p)
                     else:
-                        props[prop.name] = prop.from_dict_like(root[prop.name])
+                        _set(prop.from_dict_like(p))
                 else:
-                    pass
+                    if prop.optional:
+                        _set(prop.default)
+                    else:
+                        raise KeyError(f'`{prop.name}` is required.')
 
-        root_node = _factory.create(typ, **props)
         return root_node
 
-    # TODO: Never tested.
     @staticmethod
     def to_dict_like(root: Node) -> dict:
         props = {}
-        for prop in dir(root.__class__):  # Attention: It means we do not analyze changes of dymatic property in instances.
-            if isinstance(prop, NodeProperty) and not prop.ignored and prop.name is not None:
+
+        # ATTENTION: It means we do not analyze changes of dynamic property in instances!
+        for prop in dir(root.__class__):
+            prop = getattr(root.__class__, prop)
+            if isinstance(prop, NodeProperty) and not prop.ignored:
+                if prop.name is None:
+                    warnings.warn('`name` is None, but `ignore` is False. Has been ignored.')
+                    continue
+
+                p = prop.fget(root)
+
                 if prop.to_dict_like is None:
                     if prop.recursive_construction:
                         sub_nodes = []
-                        for sub_node in prop.fget():
-                            sub_nodes.append(Node.to_dict_like(sub_node))
+                        for sub_node in p:
+                            sub_nodes.append(NodeFactory.to_dict_like(sub_node))
                         props[prop.name] = sub_nodes
                     else:
-                        props[prop.name] = prop.fget()
+                        props[prop.name] = p
                 else:
-                    props[prop.name] = prop.to_dict_like(root)
+                    props[prop.name] = prop.to_dict_like(p)
 
         return props
 
 
-NodeFactory.type_checked = Node
+_factory: NodeFactory = sgt_i(sgt_dns.NODE_FACTORY_DN, NodeFactory)
 
 
-@Node.node
+def node(cls: Any) -> Any:
+    global _factory
+
+    if not inspect.isclass(cls):
+        raise TypeError('This decorator can only be applied to classes.')
+    if not issubclass(cls, Node):
+        raise TypeError('This decorator can only be applied to classes that inherit from Node.')
+
+    #cls.yaml_tag = '!CountAnywhere.Nodes.' + cls.this_type_name()  # TODO: 怎么才能自动设置yaml_tag且不污染prototype呢？
+
+    _factory.register(cls.this_type_name(), cls)
+
+    return cls
+
+
+@node
 class Group(Node):
     def __init__(
             self,
@@ -389,6 +496,10 @@ class Group(Node):
 
 class Marker(Node, metaclass=ABCMeta):
     type Position = tuple[int, int]
+
+    @staticmethod
+    def make_position(x: int, y: int) -> Marker.Position:
+        return x, y
 
     def __init__(
             self,
@@ -418,31 +529,19 @@ class Marker(Node, metaclass=ABCMeta):
         raise NotImplementedError()
         # return '@marker'
 
-    @staticmethod
-    def marker(cls: Any) -> Any:
-        global _factory
+    @node_property(
+        ignored=True
+    )
+    def children(self) -> list[Node] | None:
+        return None
 
-        if not inspect.isclass(cls):
-            raise TypeError('This decorator can only be applied to classes.')
-        if not issubclass(cls, Marker):
-            raise TypeError('This decorator can only be applied to classes that inherit from Marker.')
-
-        # TODO: cls中变量到底是全class变量还是只是初始化值？
-        cls.children.ignored = True         ！！！！这里发生了prototype污染！！！！这意味着一些属性的属性不能存储在class这个原型中。
-                                            或许我们可以用一个全局表来注册，每个class通过@node或@marker注册一个。
-                                            每次修饰类先扫描所有property，后面如果动态添加property就让修饰属性自动检测到已存在的meta，然后写入。
-        cls.yaml_tag = '!CountAnywhere.Markers.' + cls.this_type_name()
-
-        _factory.register(cls.this_type_name(), cls)
-
-        return cls
-
-    @staticmethod
-    def make_position(x: int, y: int) -> Marker.Position:
-        return x, y
+    @children.setter
+    def children(self, value: Iterable[Node] | None) -> None:
+        raise Exception('Cannot set children of a simple marker.')
 
     @node_property(
-        name='pos'
+        name='pos',
+        optional=False
     )
     def position(self) -> Marker.Position | None:
         return self.__position
@@ -469,7 +568,9 @@ class Marker(Node, metaclass=ABCMeta):
         return None if self.__position is None else self.__position[1]
 
     @node_property(
-        name='tags'
+        name='tags',
+        optional=True,
+        default=None
     )
     def tags(self) -> list[str]:
         return self.__tags
@@ -493,7 +594,20 @@ class Marker(Node, metaclass=ABCMeta):
     #    raise NotImplementedError('Instead, use @Property.')
 
 
-@Marker.marker
+def marker(cls: Any) -> Any:
+    if not inspect.isclass(cls):
+        raise TypeError('This decorator can only be applied to classes.')
+    if not issubclass(cls, Marker):
+        raise TypeError('This decorator can only be applied to classes that inherit from Marker.')
+
+    ret = node(cls)
+
+    #cls.yaml_tag = '!CountAnywhere.Markers.' + cls.this_type_name()
+
+    return ret
+
+
+@marker
 class ReferenceMarker(Marker):
     """
     Records an absolute coordinate as origin.
@@ -527,7 +641,9 @@ class ReferenceMarker(Marker):
         return 'ref'
 
     @node_property(
-        name='ro'
+        name='ro',
+        optional=True,
+        default=0.0,
     )
     def rotation(self) -> float:
         return self.__rotation
@@ -556,7 +672,7 @@ class ReferenceMarker(Marker):
         )
 
 
-@Marker.marker
+@marker
 class CountMarker(Marker):
     def __init__(
             self,
@@ -586,7 +702,8 @@ class CountMarker(Marker):
 
     # TODO: 如果每个都要记录ref那就太浪费存储空间了，最好搞一个group节点，可以自动设置所有子节点的ref为group的ref。
     @node_property(
-        name='ref'
+        name='ref',
+        optional=False
     )
     def reference(self) -> ReferenceMarker | None:
         return self.__reference
@@ -599,7 +716,7 @@ class CountMarker(Marker):
         self.__reference = value
 
 
-class MarkerDocument:
+class MarkerDocument:  # TODO: 写入一个警告，告诉用户该yaml文件中的注释会被自动覆盖。
     def __init__(self):
         pass
 
@@ -636,7 +753,7 @@ class MarkerDocument:
         groups = []
 
         for _doc_group in document['groups']:
-            group = Node.from_dict_like(_doc_group)
+            group = NodeFactory.from_dict_like(_doc_group)
             if not isinstance(group, Group):
                 raise TypeError('Group expected.')
 
@@ -653,7 +770,7 @@ class MarkerDocument:
         doc_groups = document['groups']
 
         for group in groups:
-            doc_groups.append(Node.to_dict_like(group))
+            doc_groups.append(NodeFactory.to_dict_like(group))
 
         return document
 
@@ -665,8 +782,13 @@ class MarkerDocument:
     def save(file_path: str, document: Iterable[Group]) -> None:
         raise NotImplementedError()
 
-if __name__ == '__main__':
-    import count_anywhere.libs.io as io
-    yaml_doc = io.load_yaml_from_file('../../../tests/example.awm.yml')
-    markers_doc = MarkerDocument.from_document(yaml_doc)
-    pass
+
+if __name__ == '__main__':  # test
+    if False:
+        import count_anywhere.libs.io as io
+
+        yaml_doc = io.load_yaml_from_file('../../../tests/example.awm.yml')
+        markers_doc = MarkerDocument.from_document(yaml_doc)
+
+        yaml_doc = MarkerDocument.to_document(markers_doc)
+        io.save_yaml_to_file('../../../tests/test-out.awm.yml', yaml_doc)

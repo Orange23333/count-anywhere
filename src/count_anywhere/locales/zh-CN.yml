@@ -16,6 +16,7 @@ version_with_value: '版本：{version}'
 # === 词汇 ===
 about: '关于'
 active: '激活'
+count_now: '现在计数'
 configure: '配置'
 general: '通用'
 help: '帮助'
@@ -30,6 +31,8 @@ actions:
     tool_tip: '显示关于窗口。'
   active:
     tool_tip: '切换激活状态。'
+  count_now:
+    tool_tip: '开始新的计数。'
   configure:
     tool_tip: '打开配置窗口。'
   help:

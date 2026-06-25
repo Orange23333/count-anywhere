@@ -2,15 +2,19 @@ from typing import Callable
 
 from PySide6.QtCore import Qt, QItemSelectionModel, QModelIndex, QSize
 from PySide6.QtGui import QIcon, QStandardItem, QStandardItemModel, QCloseEvent
-from PySide6.QtWidgets import QAbstractItemView, QGridLayout, QLabel, QSizePolicy, QTreeView, QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView, QComboBox, QFrame, QGridLayout, QGroupBox, QLabel, QSizePolicy,
+    QTreeView, QHBoxLayout, QVBoxLayout, QWidget
+)
 
+from count_anywhere.libs.data_bindings import bind_translated_text
 from count_anywhere.libs.i18n import get_available_locales, Translator
 import count_anywhere.libs.utils as utils
 
 class ConfigPage(QWidget):
     def __init__(
             self,
-            title: str,  # Translated.
+            text: str,  # Translated.
             config: dict,
             controls: list[dict],
             tr: Translator,
@@ -21,26 +25,133 @@ class ConfigPage(QWidget):
         self.__config = config
         self.__tr = tr
 
+        self.__data_binding_removers = []
+
         self.__layout = QVBoxLayout()
         self.__layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.__title = QLabel(title)
+        self.__title = QLabel(text)
+        self.__data_binding_removers.append(
+            bind_translated_text(
+                self.__tr,
+                text,
+                self.__title,
+                lambda w, t: w.setText(t)
+            )
+        )
         self.__title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.__title.setFixedSize(QSize(self.width(), 32))
-        self.__title.setStyleSheet('font-size: 24px; bold: true;')
+        self.__title.setStyleSheet('font-size: 24px; font-weight: bold;')
         self.__title.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.__layout.addWidget(self.__title)
 
+        # - <group_text> ---------------------------------
+        #    <text_text>
+        #    <text_box_text> [                          ]
+        #    <slider_text> ===|================== <value>
+        #    <selection_text> [ <selection_item_text> v ]
+        #    <checkbox_text>
+        #     [] <checkbox_item_text>
+        #    <radio_button_text>
+        #     () <radio_button_item_text>
+        #    <$other_widget$>
         for control in controls:
-            pass
+            args = control['args']
+
+            match control['type']:
+                case 'group':  # As title.
+                    if 'text' not in args or args['text'] is None:
+                        args['text'] = ''
+
+                    text = QLabel(
+                        args['text'],
+                        wordWrap = False,
+                    )
+                    self.__data_binding_removers.append(
+                        bind_translated_text(
+                            self.__tr,
+                            args['text'],
+                            text,
+                            lambda w, t: w.setText(t)
+                        )
+                    )
+                    text.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+                    text.setStyleSheet('font-size: 18px; margin-top: 8px;')
+                    self.__layout.addWidget(text)
+
+                    split_line = QFrame(
+                        frameShape = QFrame.Shape.HLine,
+                        frameShadow = QFrame.Shadow.Plain
+                    )
+                    self.__layout.addWidget(split_line)
+                case 'selection':
+                    if 'options' not in args or args['options'] is None:
+                        args['options'] = []
+                    if not isinstance(args['options'], list):
+                        raise ValueError('`options` must be a `list`.')
+
+                    layout = QHBoxLayout()
+                    layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+                    if 'pre_text' in args:
+                        pre_text = QLabel(
+                            args['pre_text'],
+                            wordWrap = True,
+                        )
+                        self.__data_binding_removers.append(
+                            bind_translated_text(
+                                self.__tr,
+                                args['pre_text'],
+                                pre_text,
+                                lambda w, t: w.setText(t)
+                            )
+                        )
+                        pre_text.setStyleSheet('font-size: 12px;')
+                        layout.addWidget(pre_text)
+
+                    selections = QComboBox()
+                    selections.addItems(args['options'])
+                    if 'current_option' in args:
+                        selections.setCurrentText(args['current_option'])
+                    selections.setStyleSheet('font-size: 12px;')
+                    if 'currentTextChanged_event_handler' in args:
+                        currentTextChanged_event_handler = args['currentTextChanged_event_handler']
+                        if currentTextChanged_event_handler is not None:
+                            selections.currentTextChanged.connect(currentTextChanged_event_handler)
+                    layout.addWidget(selections)
+
+                    if 'post_text' in args:
+                        post_text = QLabel(
+                            args['post_text'],
+                            wordWrap=True,
+                        )
+                        self.__data_binding_removers.append(
+                            bind_translated_text(
+                                self.__tr,
+                                args['post_text'],
+                                post_text,
+                                lambda w, t: w.setText(t)
+                            )
+                        )
+                        post_text.setStyleSheet('font-size: 12px;')
+                        layout.addWidget(post_text)
+
+                    self.__layout.addLayout(layout)
+                case _:
+                    NotImplementedError('Unknown or unimplemented control type.')
 
         self.setLayout(self.__layout)
 
-        #TODO: 改动应该经过config.py保存
+        #TODO: 改动应该经过config.py保存!!!
 
+    def __del__(self) -> None:
+        for remover in self.__data_binding_removers:
+            remover()
 
 
 class ConfigWindow(QWidget):
+    ITEM_NAME_ROLE = Qt.ItemDataRole.UserRole + 2
+
     def __init__(
             self,
             config: dict,
@@ -56,31 +167,63 @@ class ConfigWindow(QWidget):
         self.__tr = tr
         self.__on_closed_handler = on_closed_handler
 
+        self.__data_binding_removers = []
+
         self.setWindowTitle(self.__tr('configure'))
         self.setFixedSize(800, 600)
 
+        def get_native_name_of_locale(code: str) -> str:
+            available_locales = get_available_locales(
+                utils.get_locales_dir(self.__app_dir)
+            )
+
+            for available_locale in available_locales:
+                if available_locale['code'] == code:
+                    return available_locale['native_name']
+
+            raise ValueError(f'Locale "{code}" not found.')
+        def set_locale(native_name: str) -> None:
+            available_locales = get_available_locales(
+                utils.get_locales_dir(self.__app_dir)
+            )
+
+            for available_locale in available_locales:
+                if available_locale['native_name'] == native_name:
+                    tr.update_with(default_locale = available_locale['code'])
+                    return
+
+            raise ValueError(f'Locale "{native_name}" not found.')
         self._config_tree = {
             'children': [
                 {
-                    'title': self.__tr('general'),
+                    'name': 'general',
+                    'title': 'general',
                     'children': [],
                     'controls': [
-                        {'type': 'group', 'args': {'title': self.__tr('localization')}},
+                        {
+                            'type': 'group',
+                            'args': {
+                                'text': 'localization'
+                            }
+                        },
                         {
                             'type': 'selection',
                             'args': {
-                                'title': self.__tr('language'),
+                                'pre_text': 'language',
                                 'options': [
                                     locale['native_name'] for locale in get_available_locales(
                                         utils.get_locales_dir(self.__app_dir)
                                     )
-                                ]
+                                ],
+                                'current_option': get_native_name_of_locale(tr.default_locale),
+                                'currentTextChanged_event_handler': set_locale
                             }
                         }
                     ]
                 },
                 {
-                    'title': self.__tr('hotkeys'),
+                    'name': 'hotkeys',
+                    'title': 'hotkeys',
                     'children': [],
                     'controls': []
                 }
@@ -114,14 +257,18 @@ class ConfigWindow(QWidget):
         self.setLayout(self.__layout)
 
         self.update_tree_view()
-        self.__tree_view.expandAll()
+        #self.__tree_view.expandAll()
+
+    def __del__(self) -> None:
+        for remover in self.__data_binding_removers:
+            remover()
 
     def _on_tree_view_current_changed(self, current: QModelIndex, previous: QModelIndex) -> None:
         paths = []
         index = current
         while index.column() != -1:
             item = self.__tree_view_model.itemFromIndex(index)
-            paths.append(item.text())
+            paths.append(item.data(role = ConfigWindow.ITEM_NAME_ROLE))
 
             index = index.parent()
         paths.reverse()
@@ -131,6 +278,7 @@ class ConfigWindow(QWidget):
             for child in leaf['children']:
                 if child['title'] == path:
                     leaf = child
+                    break
 
         self.__current_config_page = ConfigPage(
                 paths[-1],
@@ -146,6 +294,15 @@ class ConfigWindow(QWidget):
 
     def __generate_config_tree(self, parent: QStandardItem, current_node: dict) -> None:
         item = QStandardItem(current_node['title'])
+        self.__data_binding_removers.append(
+            bind_translated_text(
+                self.__tr,
+                current_node['title'],
+                item,
+                lambda w, t: w.setText(t)
+            )
+        )
+        item.setData(current_node['name'], role = ConfigWindow.ITEM_NAME_ROLE)
         parent.appendRow(item)
 
         if 'children' in current_node:
@@ -153,6 +310,9 @@ class ConfigWindow(QWidget):
                 self.__generate_config_tree(item, sub_node)
 
     def update_tree_view(self) -> None:
+        # For avoiding duplicating removers,
+        # this function should only be called at __init__().
+
         root = self.__tree_view_model.invisibleRootItem()
         root.clearData()
 

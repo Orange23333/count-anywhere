@@ -20,6 +20,7 @@ classifiers = [
 license = "GPL-2.0-only"
 license-files = ["LICEN[CS]E*"]
 dependencies = [
+    "any-singleton == 1.1.0",
     #"global-hotkeys",
     "pynput >= 1.8.0",
     "pyside6 >= 6.10.0",

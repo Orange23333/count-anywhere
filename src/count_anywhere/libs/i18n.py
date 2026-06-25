@@ -3,9 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
+import warnings
 
 import ruamel.yaml
 
+import any_singleton.singletons as sgt
+import count_anywhere.sgt_dns as sgt_dns
+
+# TODO: Hot reloading translations is so cool, but it will waste too much time on completing `bind_translated_text()`.
+#       So, just remove it. And enforce users reboot after changing locale. It will reduce the complexity of the code.
+#       .
+#       Otherwise, is there a good practice to make binding translations more efficient (automatically)?
+#       No QTranslator, I don't like its style.
+#       .
+#       Even we could delete binding operation, just refresh all the widgets?
+#       Will it require cache status of widgets? How to refresh?
 
 @dataclass
 class Translation:
@@ -37,6 +49,16 @@ def get_available_locales(locales_dir: str) -> list[dict]:
     return t
 
 
+# TODO: Using UI bindings to instead manually write a update function to update text is more convenient.
+def on_translation_updated(handler: Callable[[Translator], None]) -> None:
+    if sgt.is_singleton_exists(sgt_dns.TRANSLATOR):
+        tr = sgt._get_singleton(sgt_dns.TRANSLATOR)
+        tr.on_update_handlers.append(handler)
+    else:
+        cache = sgt.singleton(sgt_dns.ON_TRANSLATOR_UPDATED__QUEUED_HANDLERS, [])
+        cache.append(handler)
+
+
 class Translator:
     def __init__(
             self,
@@ -50,6 +72,18 @@ class Translator:
         self._ft = _load_locale(locales_dir, fallback_locale)
 
         self._on_update_handlers: list[Callable[[Translator], None]] = []
+
+    @property
+    def default_locale(self) -> str:
+        return self._t.label
+
+    @property
+    def fallback_locale(self) -> str:
+        return self._ft.label
+
+    @property
+    def on_update_handlers(self) -> list[Callable[[Translator], None]]:
+        return self._on_update_handlers
 
     def update_with(
             self,
@@ -88,6 +122,7 @@ class Translator:
             if ret is None:
                 raise RuntimeError('Lost translation.')
                 #return path
+            warnings.warn(f'Translation fallback: "{path}".')
 
         return ret
 

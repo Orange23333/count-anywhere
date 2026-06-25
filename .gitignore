@@ -487,5 +487,6 @@ CMakeLists.txt.user*
 rc_*.py
 
 /.idea/
+/.jbeval/
 /.qtcreator/
 /.vscode/

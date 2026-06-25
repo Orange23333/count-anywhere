@@ -1,6 +1,7 @@
 groups:
   - name: '@default'
-    markers:
+    type: '@group'
+    children:
       - type: 'ref'
         name: '@default'
         pos: [0, 0]

@@ -3,14 +3,14 @@ from pathlib import Path
 import tomllib
 from typing import Callable
 
-import pynput.keyboard
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon, QWidget
 
 from count_anywhere.libs.data_bindings import bind_translated_text
 from count_anywhere.libs.i18n import Translator, on_translation_updated
 import count_anywhere.libs.utils as utils
-from count_anywhere.widgets import AboutWindow, ConfigWindow
+from count_anywhere.widgets import AboutWindow, ConfigWindow, MarkerEditor
 
 
 class SystemTray(QSystemTrayIcon):
@@ -34,9 +34,7 @@ class SystemTray(QSystemTrayIcon):
         self.__status: bool = False  # TODO: 应当为全局变量
 
         self.__data_binding_removers = []
-        self.__textses = []
 
-        #self.setToolTip('app.name')
         self.__data_binding_removers.append(
             bind_translated_text(
                 self.__tr,
@@ -111,17 +109,26 @@ class SystemTray(QSystemTrayIcon):
                     action['text'],
                     **action['args']
                 )
+                self.__data_binding_removers.append(
+                    bind_translated_text(
+                        self.__tr,
+                        action['text'],
+                        new_action,
+                        lambda w, t: w.setText(t)
+                    )
+                )
+                self.__data_binding_removers.append(
+                    bind_translated_text(
+                        self.__tr,
+                        action['args']['toolTip'],
+                        new_action,
+                        lambda w, t: w.setToolTip(t)
+                    )
+                )
                 new_action.triggered.connect(action['callback'])
 
                 self.__menu.addAction(new_action)
                 self.__actions[action['name']] = new_action
-                self.__textses.append({
-                    'obj': new_action,
-                    'texts': {
-                        'text': action['text'],
-                        'tool_tip': action['args']['toolTip']
-                    }
-                })
 
         self.setContextMenu(self.__menu)
 
@@ -130,25 +137,9 @@ class SystemTray(QSystemTrayIcon):
         self.toggle_status(True)
         self.update_hotkeys()
 
-        self._on_translator_updated(self.__tr)
-        self.__tr.on_update_handlers.append(self._on_translator_updated)
-
     def __del__(self) -> None:
         for remover in self.__data_binding_removers:
             remover()
-
-    def _on_translator_updated(self, tr: Translator) -> None:
-        self.__tr = tr
-
-        #self.setToolTip(self.__tr('app.name'))
-
-        for item in self.__textses:
-            w = item['obj']
-            texts = item['texts']
-
-            if isinstance(w, QAction):
-                w.setText(self.__tr(texts['text']))
-                w.setToolTip(self.__tr(texts['tool_tip']))
 
     def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         match reason:
@@ -203,7 +194,11 @@ class SystemTray(QSystemTrayIcon):
         sender.deleteLater()
 
     def start_new_count(self) -> None:
-        pass
+        screen = utils.locate_cursor_on_which_screen()
+        # picture = utils.take_screenshot(screen, using_available_geometry = True)
+
+        editor = MarkerEditor(screen = screen, picture = None)
+        utils.keep_widget(editor)
 
     def show_config_window(self) -> None:
         if self.__config_window is None:

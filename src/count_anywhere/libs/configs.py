@@ -102,7 +102,7 @@ def set_platform(
 
             match value:
                 case _:
-                    warnings.warn(f'`{value} is an unknown desktop environment.')
+                    warnings.warn(f'`{value}` is an unknown desktop environment.')
 
             _set_config(config, value, 'environment.hotkey_module')
         case _:

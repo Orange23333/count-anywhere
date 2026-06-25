@@ -7,11 +7,12 @@ def bind_translated_text(
         tr: Translator,
         key: str,
         target: Any,
-        updater: Callable[[Any, str], None]
+        updater: Callable[[Any, str], None],
+        **kwargs
 ) -> Callable[[], None]:
     def _on_update(from_: Translator):
         #updater(target, from_(key))
-        updater(target, tr(key))
+        updater(target, tr(key, **kwargs))
 
     _on_update(tr)
 

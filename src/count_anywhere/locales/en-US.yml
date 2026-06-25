@@ -6,21 +6,36 @@ app:
   # Excluding real names.
   authors: 'Orange 233'
   translators: 'Orange 233'
+
+# === 语句 ===
+activated: 'Activated.'
+authors_with_value: 'Authors: {authors}'
+deactivated: 'Deactivated.'
+version_with_value: 'Version: {version}'
+
+# === 词汇 ===
+about: 'About'
+active: 'Active'
+count_now: 'Count now'
+configure: 'Configure'
+general: 'General'
+help: 'Help'
+hotkeys: 'Hotkeys'
+language: 'Language'
+localization: 'Localization'
+quit: 'Quit'
+status: 'Status'
+
 actions:
+  about:
+    tool_tip: 'Show about window.'
   active:
-    text: 'Active'
     tool_tip: 'Toggle active status.'
+  count_now:
+    tool_tip: 'Start a new count.'
   configure:
-    text: 'Configure'
     tool_tip: 'Open configure window.'
   help:
-    text: 'Help'
     tool_tip: 'Show help.'
   quit:
-    text: 'Quit'
-    tool_tip: 'Quit.'
-messages:
-  status:
-    title: 'Status'
-    activated: 'Activated.'
-    deactivated: 'Deactivated.'
+    tool_tip: 'Close the program.'

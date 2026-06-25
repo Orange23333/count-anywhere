@@ -1,0 +1,61 @@
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <windows.h>
+
+bool contains_uint(UINT x, const UINT * arr, size_t len) {
+    size_t i;
+
+    for (i = 0; i < len; ++i) {
+        if (arr[i] == x) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int main() {
+    size_t i;
+    DWORD error_code;
+    BOOL result;
+    BYTE buf[256];
+
+    const UINT modKeys[9] = {
+        VK_SHIFT, VK_LSHIFT, VK_RSHIFT,
+        VK_CONTROL, VK_LCONTROL, VK_RCONTROL,
+        VK_MENU, VK_LMENU, VK_RMENU
+    };
+    const UINT capKeys[1] = {
+        VK_CAPITAL
+    };
+
+    while (1) {
+        system("cls");
+        
+        result = GetKeyboardState(buf);  // Useless.
+        
+        if (result) {
+            printf("SHIFT L(%s) R(%s)\n", buf[VK_LSHIFT]&0x80?"PRESSED":"RELEASED", buf[VK_RSHIFT]&0x80?"PRESSED":"RELEASED");
+            printf("CTRL L(%s) R(%s)\n", buf[VK_LCONTROL]&0x80?"PRESSED":"RELEASED", buf[VK_RCONTROL]&0x80?"PRESSED":"RELEASED");
+            printf("ALT L(%s) R(%s)\n", buf[VK_LMENU]&0x80?"PRESSED":"RELEASED", buf[VK_RMENU]&0x80?"PRESSED":"RELEASED");
+            printf("CAPS %s %s\n", buf[VK_CAPITAL]&0x1?"ON":"OFF", buf[VK_CAPITAL]&0x80?"PRESSED":"RELEASED");
+
+            for (i = 0; i < 256; ++i) {
+                if (contains_uint((UINT)i, modKeys, 9) || contains_uint((UINT)i, capKeys, 9)) {
+                    continue;
+                }
+
+                if (buf[i] != 0) {
+                    printf("[0x%X] = 0x%X\n", i, buf[i]);
+                }
+            }
+            puts("");
+        } else {
+            error_code = GetLastError();
+            printf("Error: code = %u\n", error_code);
+        }
+        
+        Sleep(100);
+    }
+}
