@@ -22,24 +22,28 @@ import count_anywhere.sgt_dns as sgt_dns
 @dataclass
 class Translation:
     label: str
-    translation: dict
+    comparison_table: dict
 
 
 def _load_locale(locales_dir: str, locale: str) -> Translation:
     d = Path(locales_dir).resolve()
     y = ruamel.yaml.YAML(typ='safe')
 
-    t = y.load(d / f'{locale}.yml')
+    ct = y.load(d / f'{locale}.yml')
 
     return Translation(
         label=locale,
-        translation=t
+        comparison_table=ct
     )
 
 
 def get_available_locales(locales_dir: str) -> list[dict]:
-    #d = Path(locales_dir).resolve()
-    #return [ f.stem for f in d.iterdir() if f.is_file() and f.suffix == '.yml' ]
+    # Deprecated method to find available_locales:
+    # ```
+    # d = Path(locales_dir).resolve()
+    # return [ f.stem for f in d.iterdir() if f.is_file() and f.suffix == '.yml' ]
+    # ```
+    # Reason: Using file system to find files with specific suffix is inefficient and unreliable.
 
     d = Path(locales_dir).resolve()
     y = ruamel.yaml.YAML(typ='safe')
@@ -107,7 +111,7 @@ class Translator:
     def _tr(t: Translation, path: str, **kwargs) -> str | None:
         parts = path.split('.')
 
-        ret = t.translation
+        ret = t.comparison_table
         for part in parts:
             if part not in ret:
                 return None
@@ -120,8 +124,7 @@ class Translator:
         if ret is None:
             ret = Translator._tr(self._ft, path, **kwargs)
             if ret is None:
-                raise RuntimeError('Lost translation.')
-                #return path
+                raise RuntimeError('Lost translation.')  # Or using `return path`?
             warnings.warn(f'Translation fallback: "{path}".')
 
         return ret

@@ -13,6 +13,7 @@ from any_singleton import singleton_instance as sgt_i
 
 from count_anywhere import sgt_dns
 from count_anywhere.libs.collections import TypeManager
+import count_anywhere.libs.io as io
 
 
 class NodeProperty(builtins.property):
@@ -27,9 +28,9 @@ class NodeProperty(builtins.property):
             optional: bool = False,
             default: Any | None = None,
             recursive_construction: bool = False,
-            from_dict_like: Callable[[dict], Any] | None = None,  # TODO: Never tested!
-            to_dict_like: Callable[[Any], dict] | None = None  # TODO: Never tested!
-    ) -> None:  # TODO: Add default and optional.
+            from_dict_like: Callable[[dict], Any] | None = None,  # TODO: Never tested (used)!
+            to_dict_like: Callable[[Any], dict] | None = None  # TODO: Never tested (used)!
+    ) -> None:
         """
         Property attribute of nodes.
 
@@ -89,14 +90,15 @@ class NodeProperty(builtins.property):
 
         super().__init__(fget, fset, fdel, doc)
 
-        # TODO: Should we use __slot__ to optimize?
-        self.name: ReadOnly[str | None] = name
-        self.ignored: ReadOnly[bool] = ignored
-        self.optional: ReadOnly[bool] = optional
-        self.default: ReadOnly[Any | None] = default
-        self.recursive_construction: ReadOnly[bool] = recursive_construction
-        self.from_dict_like: ReadOnly[Callable[[dict], Any]] = from_dict_like
-        self.to_dict_like: ReadOnly[Callable[[Any], dict]] = to_dict_like
+        # TODO: Using __slot__ to optimize?
+        # TODO: Make properties readonly?
+        self.name: str | None = name
+        self.ignored: bool = ignored
+        self.optional: bool = optional
+        self.default: Any | None = default
+        self.recursive_construction: bool = recursive_construction
+        self.from_dict_like: Callable[[dict], Any] = from_dict_like
+        self.to_dict_like: Callable[[Any], dict] = to_dict_like
 
     @override
     def getter(self, f: Callable) -> NodeProperty:
@@ -126,8 +128,9 @@ class NodeProperty(builtins.property):
         )
 
     def __set_name__(self, owner: Any, name: str) -> None:
-        self._owner: ReadOnly[Any] = owner
-        self._name_in_owner: ReadOnly[str] = name
+        # TODO: Make properties readonly?
+        self._owner: object = owner
+        self._name_in_owner: str = name
 
         super().__set_name__(owner, name)
 
@@ -137,7 +140,7 @@ class NodeProperty(builtins.property):
 
     @staticmethod
     def __call__(*args, **kwargs) -> NodeProperty:
-        return object.__new__(NodeProperty, *args, **kwargs)
+        return NodeProperty(*args, **kwargs)
 
 
 # TODO: Add default_value?
@@ -196,8 +199,7 @@ class Node(metaclass=ABCMeta):
     @staticmethod
     @abstractmethod
     def this_type_name() -> str:
-        raise NotImplementedError()
-        # return '@node'
+        raise NotImplementedError()  # '@node'
 
     @property
     def yaml_tag(self) -> str:
@@ -329,8 +331,8 @@ class Node(metaclass=ABCMeta):
         self.__children.clear()
 
     def __contains__(self, item: Node) -> bool:
-        #if not isinstance(item, Node):
-        #    return False
+        if not isinstance(item, Node):
+            return False
 
         return item in self.__children
 
@@ -465,7 +467,8 @@ def node(cls: Any) -> Any:
     if not issubclass(cls, Node):
         raise TypeError('This decorator can only be applied to classes that inherit from Node.')
 
-    #cls.yaml_tag = '!CountAnywhere.Nodes.' + cls.this_type_name()  # TODO: 怎么才能自动设置yaml_tag且不污染prototype呢？
+    # TODO: 怎么才能自动设置yaml_tag且不污染prototype呢？
+    # cls.yaml_tag = '!CountAnywhere.Nodes.' + cls.this_type_name()
 
     _factory.register(cls.this_type_name(), cls)
 
@@ -526,8 +529,7 @@ class Marker(Node, metaclass=ABCMeta):
     @staticmethod
     @abstractmethod
     def this_type_name() -> str:
-        raise NotImplementedError()
-        # return '@marker'
+        raise NotImplementedError()  # '@marker'
 
     @node_property(
         ignored=True
@@ -537,7 +539,7 @@ class Marker(Node, metaclass=ABCMeta):
 
     @children.setter
     def children(self, value: Iterable[Node] | None) -> None:
-        raise Exception('Cannot set children of a simple marker.')
+        raise NotImplementedError('Cannot set children of a simple marker.')
 
     @node_property(
         name='pos',
@@ -582,7 +584,7 @@ class Marker(Node, metaclass=ABCMeta):
     def __set_tags(self, value: Iterable[str] | None) -> None:
         self.__tags = [] if value is None else list(value)
 
-    # TODO: To figure out how to use to_yaml and from_yaml.
+    # TODO: To figure out how to use to_yaml and from_yaml of ruamel.taml.
     #@classmethod
     #@abstractmethod
     #def to_yaml(cls, representer, node):
@@ -602,7 +604,8 @@ def marker(cls: Any) -> Any:
 
     ret = node(cls)
 
-    #cls.yaml_tag = '!CountAnywhere.Markers.' + cls.this_type_name()
+    # TODO: 怎么才能自动设置yaml_tag且不污染prototype呢？
+    # cls.yaml_tag = '!CountAnywhere.Markers.' + cls.this_type_name()
 
     return ret
 
@@ -716,7 +719,7 @@ class CountMarker(Marker):
         self.__reference = value
 
 
-class MarkerDocument:  # TODO: 写入一个警告，告诉用户该yaml文件中的注释会被自动覆盖。
+class MarkerDocument:
     def __init__(self):
         pass
 
@@ -776,19 +779,12 @@ class MarkerDocument:  # TODO: 写入一个警告，告诉用户该yaml文件中
 
     @staticmethod
     def load(file_path: str) -> list[Group]:
-        raise NotImplementedError()
+        yaml_doc = io.load_yaml_from_file(file_path)
+        markers_doc = MarkerDocument.from_document(yaml_doc)
+        return markers_doc
 
     @staticmethod
     def save(file_path: str, document: Iterable[Group]) -> None:
-        raise NotImplementedError()
-
-
-if __name__ == '__main__':  # test
-    if False:
-        import count_anywhere.libs.io as io
-
-        yaml_doc = io.load_yaml_from_file('../../../tests/example.awm.yml')
-        markers_doc = MarkerDocument.from_document(yaml_doc)
-
-        yaml_doc = MarkerDocument.to_document(markers_doc)
-        io.save_yaml_to_file('../../../tests/test-out.awm.yml', yaml_doc)
+        yaml_doc = MarkerDocument.to_document(document)
+        # TODO: 写入一个警告，告诉用户该yaml文件中的注释可能会被自动覆盖。
+        io.save_yaml_to_file(file_path, yaml_doc)

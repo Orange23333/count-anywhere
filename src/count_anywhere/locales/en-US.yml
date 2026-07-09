@@ -11,6 +11,7 @@ app:
 activated: 'Activated.'
 authors_with_value: 'Authors: {authors}'
 deactivated: 'Deactivated.'
+enable_debug_mode: 'Enable debug mode'
 version_with_value: 'Version: {version}'
 
 # === 词汇 ===
@@ -18,6 +19,7 @@ about: 'About'
 active: 'Active'
 count_now: 'Count now'
 configure: 'Configure'
+developer_options: 'Developer Options'
 general: 'General'
 help: 'Help'
 hotkeys: 'Hotkeys'

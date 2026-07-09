@@ -1,24 +1,31 @@
 from __future__ import annotations
 import bisect
-from dataclasses import dataclass
-from enum import Enum
-import random
-from typing import Any, Callable, Generic, Iterable, Iterator, ReadOnly, TypeVar
+from typing import Any, Generic, Iterable, Iterator, TypeVar
 
 import rtree
-
-from count_anywhere.libs import utils as utils
 
 TKey = TypeVar('TKey')  # Type of id. Could be int, str and so on.
 TValue = TypeVar('TValue')  # Type of object to be stored.
 TPrecision = TypeVar('TPrecision')  # Type of precision. Could be int, float and so on.
 
 
-class SequenceSlot(Generic[TKey]):  # 用于自动合并连续区间的
+class SequenceSlot(Generic[TKey]):
+    """
+    For storing sequences.
+    """
+
     NOT_FOUND = -1
 
     def __init__(self, items: Iterable[TKey] | None = None) -> None:
-        # TODO: 算法中很多地方需要解算end的位置，所以，或许直接存储end而不是length会更好一些，甚至也方便用bisect查找end附近的值。
+        """
+        Create a new SequenceSlot.
+
+        :param items: Initial items.
+        """
+
+        # TODO: There are many places in the algorithm where the `end` position needs to be calculated,
+        #       so it might be better to store the `end` directly instead of the `length`,
+        #       and it also makes it easier to find values near the `end` using `bisect`.
 
         if items is not None:
             self.__begins, self.__lengths, self.__len = SequenceSlot._merge(items)
@@ -26,24 +33,36 @@ class SequenceSlot(Generic[TKey]):  # 用于自动合并连续区间的
             self.__begins, self.__lengths, self.__len = [], [], 0
 
     def contains(self, item: TKey) -> bool:
+        """
+        Check if the item is in the sequences.
+        """
+
         begin_index, _ = self._index(item)
         return begin_index != SequenceSlot.NOT_FOUND
 
     def __contains__(self, item: TKey) -> bool:
+        """
+        Check if the item is in the sequences.
+        """
+
         return self.contains(item)
 
     def __len__(self) -> int:
+        """
+        Number of total items in the sequences.
+        """
+
         return self.__len
 
     def __getitem__(self, item: int | tuple[int, int]) -> tuple[int, int] | int:
         """
-        `ss = SequenceSlot([3, 4, 5, 9])` as `[{begin: 3, length: 3}, {begin: 9, length: 1}]`
+        `ss = SequenceSlot([3, 4, 5, 9])` as `[{begin: 3, length: 3}, {begin: 9, length: 1}]`.
 
-        Usage: `ss[<index of range>]` or `ss[(<index of range>, <index in range>)]`
+        Usage: `ss[<index of range>]` or `ss[(<index of range>, <index in range>)]`.
 
         For example:
-        - `ss[0]` returns the information of the first range `(3, 3)`
-        - `ss[(0, 1)]` returns the second element of the first range `4`
+        - `ss[0]` returns the information of the first range `(3, 3)`.
+        - `ss[(0, 1)]` returns the second element of the first range `4`.
         """
 
         if isinstance(item, int):
@@ -55,29 +74,38 @@ class SequenceSlot(Generic[TKey]):  # 用于自动合并连续区间的
 
             length = self.__lengths[range_index]
 
-            if index >= length or index < -length:
+            if index >= length or index < -length:  # Check if the index is out of range.
                 raise IndexError('Out of range.')
 
             begin = self.__begins[range_index]
 
-            if index >= 0:
+            if index >= 0:  # Index.
                 return begin + index
-            else:
+            else:  # Reserved index.
                 return begin + length + index
         else:
             raise ValueError('Bad query.')
 
     def __iter__(self) -> Iterable[TKey]:
+        """
+        Iterate over all the elements like (begin, length).
+        """
+
         for begin, length in zip(self.__begins, self.__lengths):
             for i in range(length):
                 yield begin + i
 
-
     @staticmethod
     def _merge(items: Iterable[TKey]) -> tuple[list[TKey], list[TKey], int]:
-        items = sorted(items)
+        """
+        Merge the items into a list of (begin, length) pairs.
 
-        if len(items) == 0:
+        :return: A tuple of (begins, lengths, total_length).
+        """
+
+        items = sorted(items)  # Sort the items for rapidly merging.
+
+        if len(items) == 0:  # TODO: COMMENT WRITTEN HERE!
             return [], [], 0
 
         begins = [items[0]]

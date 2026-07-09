@@ -102,6 +102,8 @@ def keep_widget(w: QWidget) -> None:
     widgets = sgt.singleton('count_anywhere.libs.utils.keep_temp_widget.widgets', [])
     widgets.append(w)
 
+    # TODO: will widget be released automatically after close?
+
 
 def bisect_insert_many(
     a: list[Any],

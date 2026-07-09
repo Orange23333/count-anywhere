@@ -1,6 +1,6 @@
 from pathlib import Path
 import platform
-from typing import Literal
+from typing import Any, Literal
 import warnings
 
 import ruamel.yaml
@@ -8,7 +8,7 @@ import ruamel.yaml
 
 def _set_config(
         config: dict,
-        value: str | None,
+        value: Any | None,
         path: str | None = None
 ) -> None:
     if path is None:
@@ -117,6 +117,15 @@ def load_config(config_path: str) -> dict:
 
     # TODO: 支持分割线
     config_handlers = [
+        {
+            'path': 'debug',
+            'required': False,
+            'default': False,
+            'handler': _set_config,
+            'args': {
+                'path': 'debug'
+            }
+        },
         {
             'path': 'regular.locale',
             'required': True,

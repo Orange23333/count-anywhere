@@ -11,6 +11,7 @@ app:
 activated: '已激活。'
 authors_with_value: '作者：{authors}'
 deactivated: '已停用。'
+enable_debug_mode: '启用调试模式'
 version_with_value: '版本：{version}'
 
 # === 词汇 ===
@@ -18,6 +19,7 @@ about: '关于'
 active: '激活'
 count_now: '现在计数'
 configure: '配置'
+developer_options: '开发人员选项'
 general: '通用'
 help: '帮助'
 hotkeys: '快捷键'

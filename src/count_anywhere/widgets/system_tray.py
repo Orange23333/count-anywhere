@@ -53,7 +53,7 @@ class SystemTray(QSystemTrayIcon):
                 'args': {
                     'toolTip': 'actions.count_now.tool_tip'
                 },
-                'callback': self.start_new_count
+                'callback': self.start_new_count_with_screenshot
             },
             {
                 'name': 'active',
@@ -193,11 +193,13 @@ class SystemTray(QSystemTrayIcon):
 
         sender.deleteLater()
 
-    def start_new_count(self) -> None:
+    def start_new_count_with_screenshot(self) -> None:
         screen = utils.locate_cursor_on_which_screen()
-        # picture = utils.take_screenshot(screen, using_available_geometry = True)
+        picture = utils.take_screenshot(screen, using_available_geometry = True)
 
-        editor = MarkerEditor(screen = screen, picture = None)
+        editor = MarkerEditor(screen = screen, picture = picture)
+        editor.showNormal()
+        editor.activateWindow()
         utils.keep_widget(editor)
 
     def show_config_window(self) -> None:

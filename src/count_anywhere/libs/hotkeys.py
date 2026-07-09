@@ -24,6 +24,7 @@ from typing import Callable, override, ReadOnly
 
 from any_singleton import singleton
 
+from count_anywhere.libs.collections import NumberIdManager
 import count_anywhere.libs.win32 as win32
 
 type HotkeyHandle = int
@@ -62,14 +63,16 @@ class WindowsHotkeyServiceProvider(HotkeyServiceProvider):
         super().__init__()
 
         self.__handlers_lock = threading.Lock()
-        self.__handlers: dict[HotkeyHandle, HotkeyHandlerItem] = singleton(
+        self.__handlers = NumberIdManager()
+        HEREEEEEEEEEEEEEEEEEEEEEEEEE!
+        self.__event_handlers: dict[HotkeyHandle, HotkeyHandlerItem] = singleton(
             'count_anywhere.libs.hotkeys.HotkeyServiceProvider.__handlers',
             {}
         )
 
     @override
     def _unregister_all(self) -> None:
-        for h, item in self.__handlers.items():
+        for h, item in self.__even_handlers.items():
             pass
 
     @staticmethod
@@ -164,7 +167,7 @@ class WindowsHotkeyServiceProvider(HotkeyServiceProvider):
 
         with self.__handlers_lock:
             id_ = 0
-            while id_ in self.__handlers:
+            while id_ in self.__even_handlers:
                 id_ = random.randint(1, 0x7FFF_FFFE)
 
             r: ctypes.wintypes.BOOL = win32.User32.RegisterHotKey(
@@ -179,7 +182,7 @@ class WindowsHotkeyServiceProvider(HotkeyServiceProvider):
 
                 raise RuntimeError(f'Failed to register the hot key. ({error_code})')
 
-            self.__handlers[id_] = HotkeyHandlerItem(id_, callback)
+            self.__event_handlers[id_] = HotkeyHandlerItem(id_, callback)
 
         return id_
 

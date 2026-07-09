@@ -88,7 +88,7 @@ class AboutWindow(QWidget):
         self.__authors.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.__layout.addWidget(self.__authors)
 
-        self.__references = None
+        self.__references = None  # Reversed field.
 
         self.setLayout(self.__layout)
 

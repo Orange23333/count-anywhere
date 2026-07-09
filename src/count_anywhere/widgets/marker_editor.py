@@ -1,8 +1,8 @@
 from typing import override
 
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QContextMenuEvent, QCursor, QKeyEvent, QMouseEvent, QPainter, QPaintEvent, QPixmap, QScreen
-from PySide6.QtWidgets import QApplication, QLabel, QMenu, QWidget, QGridLayout
+from PySide6.QtCore import Property, Qt, QPoint
+from PySide6.QtGui import QBrush, QContextMenuEvent, QCursor, QKeyEvent, QMouseEvent, QPainter, QPaintEvent, QPen, QPixmap, QScreen
+from PySide6.QtWidgets import QApplication, QFrame, QLabel, QMainWindow, QMenu, QWidget, QGridLayout
 
 import any_singleton.singletons as sgt
 
@@ -29,24 +29,45 @@ class MarkerWidget(QWidget):
     def sync_from_data(self) -> None:
         self.move(QPoint(self.data.x, self.data.y))
 
+    @override
+    def paintEvent(self, event: QPaintEvent, /) -> None:
+        super().paintEvent(event)
 
-# TODO: 不时向temp文件写入当前demarker以免丢失，或者直接设计自动保存。
+        painter = QPainter()
+        pen = QPen()
+        pen.setStyle(Qt.PenStyle.SolidLine)
+        brush = QBrush()
+        brush.setStyle(Qt.BrushStyle.NoBrush)
+        painter.setPen(pen)
+        painter.setBrush(brush)
+
+        painter.begin(self)
+        painter.drawEllipse(self.x(), self.y(), 10, 10)
+        painter.end()
+
+        # region = QtGui.QRegion(QtCore.QRect(20, 20, 40, 30), QtGui.QRegion.Ellipse)
+        # self.setMask(region)
+
+
+# TODO: 不时向temp文件写入当前marker以免丢失，或者直接设计自动保存。
 
 class MarkerView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.markers: Space = Space(2)
+        self.marker_widgets: list[MarkerWidget] = []
 
     def add_marker(self, marker: Marker) -> None:
-        self.markers.add()
+        self.markers.add([marker.position[0], marker.position[1]], marker)
+        self.marker_widgets.append(MarkerWidget(parent=self, data=marker))
 
     def select_item_by_position(self, position: QPoint, /) -> None:
         pass
 
     @override
     def paintEvent(self, event: QPaintEvent, /) -> None:
-        painter = QPainter(self)
+        super().paintEvent(event)
 
     @override
     def mousePressEvent(self, event: QMouseEvent, /) -> None:
@@ -97,9 +118,9 @@ class MarkerEditor(QWidget):
         if not config['debug']:
             window_flag |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlag(window_flag)
-        self.setAttribute(
-            Qt.WidgetAttribute.WA_TranslucentBackground
-        )
+        #self.setAttribute(
+        #    Qt.WidgetAttribute.WA_TranslucentBackground
+        #)
         self.setStyleSheet("""
             border: 1px solid #EE0000;
             border-radius: 1px;
@@ -109,23 +130,30 @@ class MarkerEditor(QWidget):
         if screen is None:
             screen = QApplication.primaryScreen()
         self.setScreen(screen)
+        self.setFixedSize(screen.availableSize())
 
-        self.__layout = QGridLayout()
-        self.__layout.setContentsMargins(0, 0, 0, 0)
-        self.__layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        #self.__layout = QGridLayout()
+        #self.__layout.setContentsMargins(0, 0, 0, 0)
+        #self.__layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.__edit_area = QLabel()
+        self.__edit_area = QLabel(parent=self)
         if picture is not None:
             self.__edit_area.setPixmap(picture)
         else:
             self.__edit_area.setStyleSheet("""
                 /*background: transparent;*/
-                background-color: rgba(255, 255, 255, 1%);
+                background-color: rgba(255, 255, 255, 50%);
             """)
-        self.__edit_area.setFixedSize(screen.availableSize())
-        self.__layout.addWidget(self.__edit_area)
+        self.__edit_area.setMargin(0)
+        self.__edit_area.setFixedSize(self.rect().size())
 
-        self.setLayout(self.__layout)
+        #self.__marker_view = MarkerView(parent=self)
+        #self.__edit_area.setMargin(0)
+        #self.__edit_area.setFixedSize(self.rect().size())
+        #self.__marker_view.raise_()
+
+
+        #self.setLayout(self.__layout)
 
     def _create_marker(
             self,
@@ -167,23 +195,52 @@ class MarkerEditor(QWidget):
     def keyPressEvent(self, event: QKeyEvent, /) -> None:
         print(f'Got mod={event.modifiers()} key={event.key()} (vk.mod={event.nativeModifiers()} vk={event.nativeVirtualKey()}).')
 
+        has_held = False
+        def hold() -> None:
+            nonlocal has_held
+            has_held = True
+
         if not event.isAutoRepeat():
-            match event.key():
-                case Qt.Key.Key_Escape:
-                    self.close()
-                    event.accept()
+            MODIFIERS_MASK = (
+                Qt.KeyboardModifier.ControlModifier |
+                Qt.KeyboardModifier.AltModifier |
+                Qt.KeyboardModifier.ShiftModifier |
+                Qt.KeyboardModifier.MetaModifier
+            )
+            modifiers = event.modifiers() & MODIFIERS_MASK
+            key = event.key()
+
+            match modifiers:
+                case Qt.KeyboardModifier.NoModifier:
+                    match key:
+                        case Qt.Key.Key_Escape:
+                            # close()
+                            self.close()
+                            hold()
+                        case Qt.Key.Key_Space:
+                            # add_marker_at_cursor()
+                            cursor_pos = self.mapFromGlobal(QCursor.pos())
+                            if self.rect().contains(cursor_pos):
+                                new_marker_model = self._create_marker((cursor_pos.x(), cursor_pos.y()))
+                                self.__marker_view.add_marker(new_marker_model)
+
+                                hold()
+                        case _:
+                            pass
+                case Qt.KeyboardModifier.ControlModifier:
+                    match key:
+                        case Qt.Key.Key_Z:
+                            # undo()
+                            raise NotImplementedError()
+                        case _:
+                            pass
                 case _:
-                    if event.modifiers() == Qt.KeyboardModifier.NoModifier and event.key() == Qt.Key.Key_Space:
-                        cursor_pos = self.mapFromGlobal(QCursor.pos())
-                        if self.rect().contains(cursor_pos):
-                            new_marker_model = self._create_marker((cursor_pos.x(), cursor_pos.y()))
-                            new_marker_view = MarkerWidget(data=new_marker_model)
-                            self.__layout.addWidget(new_marker_view)
-                            准备开始设计绘制事件
+                    pass
 
-                        event.accept()
-
-        event.ignore()
+        if has_held:
+            event.accept()
+        else:
+            event.ignore()
 
     @override
     def keyReleaseEvent(self, event: QKeyEvent, /) -> None:
