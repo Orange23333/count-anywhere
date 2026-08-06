@@ -85,12 +85,12 @@ class ConfigPage(QWidget):
         #    <text_box_text> [                          ]
         #    <slider_text> ===|================== <value>
         #    <selection_text> [ <selection_item_text> v ]
-        #    <checkbox_text>
+        #    <checkboxs_text>
         #     [] <checkbox_item_text>
-        #    <radio_button_text>
+        #    <radio_buttons_text>
         #     () <radio_button_item_text>
         #    <$other_widget$>
-        for control in controls:
+        for control in controls:  # TODO: make this constructor into a function.
             args = control['args']
 
             match control['type']:

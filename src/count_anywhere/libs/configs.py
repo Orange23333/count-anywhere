@@ -164,7 +164,7 @@ def load_config(config_path: str) -> dict:
         }
     ]
 
-    for h in config_handlers:
+    for h in config_handlers:  # TODO: make this constructor into a function.
         path = h['path']
         parts = path.split('.')
 

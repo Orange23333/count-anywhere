@@ -101,7 +101,7 @@ class SystemTray(QSystemTrayIcon):
             }
         ]
         self.__actions = {}
-        for action in actions:
+        for action in actions:  # TODO: make this constructor into a function.
             if 'type' in action and action['type'] == 'separator':
                 self.__menu.addSeparator()
             else:

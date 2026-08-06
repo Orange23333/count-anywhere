@@ -12,6 +12,8 @@ from count_anywhere.libs.collections import Space
 
 
 class MarkerWidget(QWidget):
+    MARKER_RADIUS = 6
+
     def __init__(
             self,
             parent: QWidget | None = None,
@@ -22,31 +24,28 @@ class MarkerWidget(QWidget):
         if data is None:
             raise ValueError('`data` must be provided.')
         self.data: Marker = data
-        self.sync_from_data()
 
         self.style = 'o'
 
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setFixedSize(self.MARKER_RADIUS * 2 + 2, self.MARKER_RADIUS * 2 + 2)
+        self.sync_from_data()
+
+    def __del__(self) -> None:
+        pass
+
     def sync_from_data(self) -> None:
-        self.move(QPoint(self.data.x, self.data.y))
+        self.move(QPoint(self.data.x - self.MARKER_RADIUS, self.data.y - self.MARKER_RADIUS))
 
     @override
     def paintEvent(self, event: QPaintEvent, /) -> None:
         super().paintEvent(event)
 
-        painter = QPainter()
-        pen = QPen()
-        pen.setStyle(Qt.PenStyle.SolidLine)
-        brush = QBrush()
-        brush.setStyle(Qt.BrushStyle.NoBrush)
-        painter.setPen(pen)
-        painter.setBrush(brush)
-
-        painter.begin(self)
-        painter.drawEllipse(self.x(), self.y(), 10, 10)
+        painter = QPainter(self)
+        painter.setPen(QPen(Qt.GlobalColor.red, 2))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(self.rect().center(), self.MARKER_RADIUS, self.MARKER_RADIUS)
         painter.end()
-
-        # region = QtGui.QRegion(QtCore.QRect(20, 20, 40, 30), QtGui.QRegion.Ellipse)
-        # self.setMask(region)
 
 
 # TODO: 不时向temp文件写入当前marker以免丢失，或者直接设计自动保存。
@@ -55,12 +54,11 @@ class MarkerView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.markers: Space = Space(2)
-        self.marker_widgets: list[MarkerWidget] = []
+        self.marker_space: Space = Space(2)
 
     def add_marker(self, marker: Marker) -> None:
-        self.markers.add([marker.position[0], marker.position[1]], marker)
-        self.marker_widgets.append(MarkerWidget(parent=self, data=marker))
+        self.marker_space.add([marker.position[0], marker.position[1]], marker)
+        MarkerWidget(parent=self, data=marker).show()
 
     def select_item_by_position(self, position: QPoint, /) -> None:
         pass
@@ -71,22 +69,22 @@ class MarkerView(QWidget):
 
     @override
     def mousePressEvent(self, event: QMouseEvent, /) -> None:
-        pass
+        super().mousePressEvent(event)
 
     @override
     def mouseDoubleClickEvent(self, event: QMouseEvent, /) -> None:
-        pass
+        super().mouseDoubleClickEvent(event)
 
     @override
     def mouseMoveEvent(self, event: QMouseEvent, /) -> None:
-        pass
+        super().mouseMoveEvent(event)
 
     @override
     def mouseReleaseEvent(self, event: QMouseEvent, /) -> None:
-        pass
+        super().mouseReleaseEvent(event)
 
     def contextMenuEvent(self, event: QContextMenuEvent, /) -> None:
-        menu = QMenu()
+        super().contextMenuEvent(event)
 
 
 class MarkerEditor(QWidget):
@@ -119,7 +117,8 @@ class MarkerEditor(QWidget):
             window_flag |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlag(window_flag)
         #self.setAttribute(
-        #    Qt.WidgetAttribute.WA_TranslucentBackground
+        #    Qt.WidgetAttribute.WA_TranslucentBackground |
+        #    Qt.WidgetAttribute.WA_TransparentForMouseEvents
         #)
         self.setStyleSheet("""
             border: 1px solid #EE0000;
@@ -132,11 +131,11 @@ class MarkerEditor(QWidget):
         self.setScreen(screen)
         self.setFixedSize(screen.availableSize())
 
-        #self.__layout = QGridLayout()
-        #self.__layout.setContentsMargins(0, 0, 0, 0)
-        #self.__layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.__layout = QGridLayout()
+        self.__layout.setContentsMargins(0, 0, 0, 0)
+        self.__layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.__edit_area = QLabel(parent=self)
+        self.__edit_area = QLabel()
         if picture is not None:
             self.__edit_area.setPixmap(picture)
         else:
@@ -146,14 +145,15 @@ class MarkerEditor(QWidget):
             """)
         self.__edit_area.setMargin(0)
         self.__edit_area.setFixedSize(self.rect().size())
+        self.__layout.addWidget(self.__edit_area, 0, 0)
 
-        #self.__marker_view = MarkerView(parent=self)
-        #self.__edit_area.setMargin(0)
-        #self.__edit_area.setFixedSize(self.rect().size())
-        #self.__marker_view.raise_()
+        self.__marker_view = MarkerView()
+        self.__edit_area.setMargin(0)
+        self.__edit_area.setFixedSize(self.rect().size())
+        self.__marker_view.raise_()
+        self.__layout.addWidget(self.__marker_view, 0, 0)
 
-
-        #self.setLayout(self.__layout)
+        self.setLayout(self.__layout)
 
     def _create_marker(
             self,
@@ -177,19 +177,19 @@ class MarkerEditor(QWidget):
 
     @override
     def mousePressEvent(self, event: QMouseEvent, /) -> None:
-        event.ignore()
+        super().mousePressEvent(event)
 
     @override
     def mouseReleaseEvent(self, event: QMouseEvent, /) -> None:
-        event.ignore()
+        super().mouseReleaseEvent(event)
 
     @override
     def mouseMoveEvent(self, event: QMouseEvent, /) -> None:
-        event.ignore()
+        super().mouseMoveEvent(event)
 
     @override
     def mouseDoubleClickEvent(self, event: QMouseEvent, /) -> None:
-        event.ignore()
+        super().mouseDoubleClickEvent(event)
 
     @override
     def keyPressEvent(self, event: QKeyEvent, /) -> None:
@@ -244,4 +244,4 @@ class MarkerEditor(QWidget):
 
     @override
     def keyReleaseEvent(self, event: QKeyEvent, /) -> None:
-        event.ignore()
+        super().keyReleaseEvent(event)
