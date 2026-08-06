@@ -11,7 +11,7 @@ line-length = 88
 [format]
 line-ending = "auto"
 indent-style = "tab"
-quote-style = "signle"
+quote-style = "single"
 
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
