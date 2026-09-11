@@ -1,8 +1,13 @@
 from __future__ import annotations
+import ast
+import builtins
 import bisect
+import re
 from typing import Any, Generic, Iterable, Iterator, TypeVar
 
 import rtree
+
+from count_anywhere.libs.markers import Marker
 
 TKey = TypeVar('TKey')  # Type of id. Could be int, str and so on.
 TValue = TypeVar('TValue')  # Type of object to be stored.
@@ -607,6 +612,32 @@ class TypeManager(Generic[TKey]):
     def __contains__(self, item: TKey) -> bool:
         return self.contains_id(item)
 
+
+class Context:
+    def __init__(self) -> None:
+        self.globals_ = {
+            '__name__': '__main__',
+            '__doc__': None,
+            '__package__': None,
+            '__loader__': None,  # _frozen_importlib.BuiltinImporter
+            '__spec__': None,
+            '__builtins__': builtins
+        }
+        self.pure_locals_ = {}
+
+    def eval_(self, code: str) -> Any:
+        # It's seem that copy globals to locals is unnecessary?
+        g = self.globals_
+        l = self.pure_locals_
+        return eval(code, g, l)
+
+    #def snapshot(self) -> Context:
+    #    # Simplify Chinese:
+    #    # 因为这里使用一个 Python Object 即 dict 来存储这些变量，
+    #    # 无法真正的产生一个快照，所以这里暂时不做实现。
+    #    raise NotImplementedError()
+
+
 class Space:
     def __init__(self, dimension: int) -> None:
         p = rtree.index.Property()
@@ -674,3 +705,66 @@ class Space:
     def intersection(self, boundary: list[float]) -> Iterable[rtree.index.Item]:
         self.__check_boundary(boundary)
         return self.__data.intersection(boundary, objects=True)
+
+    # def __translate_expression(self, expression: str) -> str:  # Following code is referenced to `ast` module of Python.
+    #    root_node = ast.parse(expression)  # A Module node.
+    #    process = [root_node]
+    #
+    #    # If 'xxx' is an attribute of item, replaces `Name(id='xxx',ctx=Load())` with
+    #    # `Attribute(value=Name(id='item',ctx=Load()),attr='xxx',ctx=Load())`.
+    #    #
+    #    # Replacing `Call(func=Name(id='re',ctx=Load()),...)` with
+    #    # `Call(func=Attribute(value=Name(id='re',ctx=Load()),attr='search',ctx=Load()),...)`.
+    #    # Remember to import `re`.
+    #
+    #    def iter_fields(node: ast.AST) -> Iterable[tuple[str, ast.AST]]:
+    #        for field in node._fields:
+    #            try:
+    #                yield field, getattr(node, field)
+    #            except AttributeError:
+    #                pass
+    #
+    #    def iter_child_nodes(node: ast.AST) -> Iterable[ast.AST]:
+    #        for name, field in iter_fields(node):
+    #            if isinstance(field, ast.AST):
+    #                yield field
+    #            elif isinstance(field, list):
+    #                for item in field:
+    #                    if isinstance(item, ast.AST):
+    #                        yield item
+    #
+    #    def walk(node: ast.AST) -> Iterable[ast.AST]:
+    #        from collections import deque
+    #
+    #        todo = deque([node])
+    #        while todo:
+    #            node = todo.popleft()
+    #            todo.extend(iter_child_nodes(node))
+    #            yield node
+    #
+    #    pass
+
+    def filter(
+            self,
+            expression: str,
+            item_id: str = 'item'
+    ) -> Iterable[Any]:
+        """
+        For example:
+            'tag.name == "@default" and tag.p > 0.7'
+            're(tag.name, ".*_cell") and 0.5 <= tag.p <= 0.9'
+        """
+
+        expression = self.__translate_expression(expression)
+
+        # TODO:
+        # compiler the expression such as 'tag.p > 0.7' to a function:
+        # lambda item: item.tag.p > 0.7
+        # using ast to find the Name(), adding `item.` before it.
+
+        for item in self.__iter__():
+            cx = Context()  # TODO: Optimize the same initialization.
+            cx.pure_locals_[item_id] = item
+            result = cx.eval_(expression)
+            if result == True:
+                yield item

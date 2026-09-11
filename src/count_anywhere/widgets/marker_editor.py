@@ -1,8 +1,13 @@
 from __future__ import annotations
+from dataclasses import dataclass
+import math
 from typing import override
 
-import any_singleton.singletons as sgt
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import (
+    QPoint,
+    Qt,
+    Signal
+)
 from PySide6.QtGui import (
     QBrush,
     QContextMenuEvent,
@@ -14,67 +19,97 @@ from PySide6.QtGui import (
     QPaintEvent,
     QPen,
     QPixmap,
-    QScreen,
+    QScreen
 )
-from PySide6.QtWidgets import QApplication, QGridLayout, QLabel, QMenu, QSizePolicy, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QGridLayout,
+    QLabel,
+    QMenu,
+    QSizePolicy,
+    QWidget
+)
+
+import any_singleton.singletons as sgt
 
 from count_anywhere import sgt_dns
 from count_anywhere.libs.collections import Space
-from count_anywhere.libs.markers import CountMarker, Group, Marker, ReferenceMarker
+from count_anywhere.libs.markers import (
+    CountMarker, Group, Marker, ReferenceMarker
+)
+
+
+# UI Framework:
+# MarkerEditor provides window and surrounding functions.
+# MarkerView is used to contain the Marker/MarkerWidget and render them.
+# MarkerWidget is a view of one Marker.
+
+
+@dataclass
+class MarkerStyle:
+    radius: int
+    thickness: float
+
+    @property
+    def side_length(self) -> float:
+        return (self.radius + self.thickness) * 2
 
 
 class MarkerWidget(QWidget):
     def __init__(
             self,
             parent: QWidget | None = None,
-            data: Marker | None = None
+            data: Marker | None = None,
+            marker_style: MarkerStyle | None = None
     ) -> None:
         super().__init__(parent)
 
         if data is None:
             raise ValueError('`data` must be provided.')
-        self.data: Marker = data
+        self._data: Marker = data
 
-        self.__thickness: int = 2
-        self.__radius: int = 6
+        if marker_style is None:
+            self.__marker_style: MarkerStyle = MarkerStyle(
+                radius=6,
+                thickness=2.0
+            )
+        else:
+            self.__marker_style: MarkerStyle = marker_style
 
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         self._update()
 
     def sync_from_data(self) -> None:
-        self.move(QPoint(self.data.x - self.__radius, self.data.y - self.__radius))
+        self.move(QPoint(
+            self._data.x - self.__marker_style.radius,
+            self._data.y - self.__marker_style.radius
+        ))
 
     def _update(self) -> None:
         self.sync_from_data()
-        l = (self.__radius + self.__thickness) * 2
+        l = int(math.ceil(self.__marker_style.side_length))
         self.setFixedSize(l, l)
         self.update()
 
     @property
-    def thickness(self) -> float:
-        return self.__thickness
+    def marker_style(self) -> MarkerStyle:
+        return self.__marker_style
 
-    @thickness.setter
-    def thickness(self, value: float) -> None:
-        self.__thickness = value
-
-    @property
-    def radius(self) -> int:
-        return self.__radius
-
-    @radius.setter
-    def radius(self, value: int) -> None:
-        self.__radius = value
+    @marker_style.setter
+    def marker_style(self, value: MarkerStyle) -> None:
+        self.__marker_style = value
 
     @override
     def paintEvent(self, event: QPaintEvent, /) -> None:
         super().paintEvent(event)
 
         painter = QPainter(self)
-        painter.setPen(QPen(Qt.GlobalColor.red, self.__thickness))
+        painter.setPen(QPen(Qt.GlobalColor.red, self.__marker_style.thickness))
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawEllipse(self.rect().center(), self.__radius, self.__radius)
+        painter.drawEllipse(
+            self.rect().center(), self.__marker_style.radius, self.__marker_style.radius
+        )
         painter.end()
 
 
@@ -86,63 +121,86 @@ class MarkerView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
-        self.marker_space: Space = Space(2)
+        self._data: Space = Space(2)
         self.__widgets: dict[int, MarkerWidget] = {}
 
         self.__cursor_pos: QPoint = QPoint(-1, -1)
-        self.__preview_radius: int = 6
+        self.__preview_marker: MarkerWidget | None = None
+        self.__preview_marker.marker_style = MarkerStyle(
+            radius=6,
+            thickness=2.0
+        )
         self.__preview_removing: bool = False
 
-        self.setMouseTracking(True)
+        self.setMouseTracking(True)  # ?
 
-    def __len__(self) -> int:
-        return len(self.__widgets)
+    #def __len__(self) -> int:
+    #    return len(self.__widgets)
 
     def add_marker(self, marker: Marker) -> int:
-        marker_id = self.marker_space.add([marker.position[0], marker.position[1]], marker)
-        widget = MarkerWidget(parent=self, data=marker)
+        marker_id = self._data.add(
+            [marker.position[0], marker.position[1]], marker
+        )
+
+        widget = MarkerWidget(
+            parent=self,
+            data=marker,
+            marker_style=MarkerStyle(
+                radius=self.__preview_marker.marker_style.radius,
+                thickness=self.__preview_marker.marker_style.thickness
+            )
+        )
         widget.show()
+
         self.__widgets[marker_id] = widget
         return marker_id
+
+    @staticmethod
+    def __normalize_position(position: Marker.Position | QPoint) -> tuple[int, int]:
+        if isinstance(position, QPoint):
+            return position.x(), position.y()
+        return position
+
+    def move_marker(self, marker_id: int, new_position: Marker.Position | QPoint) -> None:
+        x, y = MarkerView.__normalize_position(new_position)
+
+        raise NotImplementedError()  # TODO: Implement it.
 
     def remove_marker(self, marker_id: int) -> None:
         widget = self.__widgets.pop(marker_id, None)
         if widget is not None:
-            self.marker_space.remove(marker_id, [widget.data.x, widget.data.y])  # TODO: 确保所有变动都被即使更正，以免无法索引。
+            self._data.remove(marker_id, [widget._data.x, widget._data.y])  # TODO: 确保所有（坐标）变动都被及时更正，以免无法索引。
             widget.deleteLater()
 
-    def find_marker_at(self, position: QPoint, tolerance: int, /) -> tuple[Marker, int] | None:
+    def find_nearest_marker(self, position: Marker.Position | QPoint, tolerance: float, /) -> tuple[int, Marker] | None:
+        x, y = MarkerView.__normalize_position(position)
+
         boundary = [
-            position.x() - tolerance, position.y() - tolerance,
-            position.x() + tolerance, position.y() + tolerance
+            x - tolerance, y - tolerance,
+            x + tolerance, y + tolerance
         ]
 
-        nearest = None
-        nearest_distance_squared = float('inf')
-        for item in self.marker_space.intersection(boundary):
-            marker = item.object
-            dx = marker.x - position.x()
-            dy = marker.y - position.y()
-            distance_squared = dx * dx + dy * dy
-            if distance_squared < nearest_distance_squared:
-                nearest_distance_squared = distance_squared
-                nearest = item
+        results = self._data.nearest(boundary, num_results=1)
+        results = list(results)
+        if len(results) == 0:
+            return None
 
-        if nearest is not None and nearest_distance_squared <= tolerance * tolerance:
-            return nearest.object, nearest.id
-        return None
+        result = results[0]
+        return result.object.id, result.object
 
-    @property
-    def preview_radius(self) -> int:
-        return self.__preview_radius
+    def _update(self) -> None:
+        l = (self.__preview_style.radius + self.__preview_style.thickness) * 2
+        l = int(math.ceil(l))
+        self.setFixedSize(l, l)
 
-    def set_marker_radius(self, radius: int) -> None:
-        self.__preview_radius = radius
-        for widget in self.__widgets.values():
-            widget.set_radius(radius)
-        self.update()
+        for mid, w in self.__widgets.items():
+            w._update()
 
     def update_preview(self, position: QPoint) -> None:
+        """
+        Update the preview marker.
+        """
+        HEREEEEEEEEEEEEE
         self.__cursor_pos = position
         self.__preview_removing = self.find_marker_at(position, self.__preview_radius + 2) is not None
         self.update()
@@ -225,6 +283,7 @@ class MarkerEditor(QWidget):
         self.__layout.setSpacing(0)
         self.__layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+
         self.__edit_area = QLabel()
         if picture is not None:
             self.__edit_area.setPixmap(picture)
@@ -243,6 +302,7 @@ class MarkerEditor(QWidget):
 
         self.setLayout(self.__layout)
 
+        # TODO: count label 因为某种原因会开始不刷新
         self.__count_label = QLabel(self)
         self.__count_label.setStyleSheet("""
             background-color: rgba(0, 0, 0, 80%);

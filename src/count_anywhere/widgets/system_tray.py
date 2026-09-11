@@ -220,10 +220,16 @@ class SystemTray(QSystemTrayIcon):
 
     def show_about(self) -> None:
         if self.__about_window is None:
-            self.__about_window = AboutWindow(
-                utils.get_version(
+            try:
+                version = utils.get_version(
                     utils.get_pyproject_path(str(self.__app_dir))
-                ),
+                )
+            except FileNotFoundError:
+                warnings.warn('Can\'t get version field from "pyproject.toml".')
+                version = '<unknown>'
+
+            self.__about_window = AboutWindow(
+                version,
                 self.__tr,
                 on_closed_handler = self.__other_widgets_on_closed_handler
             )

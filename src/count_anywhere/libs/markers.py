@@ -476,6 +476,38 @@ def node(cls: Any) -> Any:
 
 
 @node
+class Tag(Node):
+    def __init__(
+            self,
+            name: str | None = None,
+            parent: Node | None = None,
+            p: float | None = None,
+            children: Iterable[Node] | None = None,
+            type_name: str | None = None
+    ) -> None:
+        super().__init__(
+            name=name,
+            parent=parent,
+            children=children,
+            type_name=type_name
+        )
+
+        self.__p = p
+
+    @property
+    def p(self) -> float:
+        return self.__p
+
+    @p.setter
+    def p(self, value: float) -> None:
+        self.__p = value
+
+    @override
+    @staticmethod
+    def this_type_name() -> str:
+        return '@tag'
+
+@node
 class Group(Node):
     def __init__(
             self,
@@ -497,6 +529,7 @@ class Group(Node):
         return '@group'
 
 
+# TODO: 支持子marker，即框中框。
 class Marker(Node, metaclass=ABCMeta):
     type Position = tuple[int, int]
 
@@ -509,7 +542,7 @@ class Marker(Node, metaclass=ABCMeta):
             name: str | None = None,
             parent: Group | None = None,
             position: Marker.Position | None = None,  # TODO: Using float instead of int?
-            tags: Iterable[str] | None = None,
+            tags: Iterable[Tag] | None = None,
             type_name: str | None = None
     ) -> None:
         super().__init__(
@@ -574,11 +607,11 @@ class Marker(Node, metaclass=ABCMeta):
         optional=True,
         default=None
     )
-    def tags(self) -> list[str]:
+    def tags(self) -> list[Tag]:
         return self.__tags
 
     @tags.setter
-    def tags(self, value: Iterable[str] | None) -> None:
+    def tags(self, value: Iterable[Tag] | None) -> None:
         self.__set_tags(value)
 
     def __set_tags(self, value: Iterable[str] | None) -> None:
@@ -623,7 +656,7 @@ class ReferenceMarker(Marker):
             parent: Group | None = None,  # TODO: Override property.
             position: Marker.Position | None = None,
             rotation: float | None = None,  # In rad.
-            tags: list[str] | None = None,
+            tags: list[Tag] | None = None,
             type_name: str | None = None
     ) -> None:
         super().__init__(
@@ -662,7 +695,7 @@ class ReferenceMarker(Marker):
     def zero_origin(
             name: str | None = None,
             parent: Group | None = None,
-            tags: list[str] | None = None,
+            tags: list[Tag] | None = None,
             type_name: str | None = None
     ) -> ReferenceMarker:
         return ReferenceMarker(
@@ -683,7 +716,7 @@ class CountMarker(Marker):
             parent: Group | None = None,
             position: Marker.Position | None = None,
             refers_to: ReferenceMarker | None = None,
-            tags: list[str] | None = None,
+            tags: list[Tag] | None = None,
             type_name: str | None = None
     ) -> None:
         super().__init__(

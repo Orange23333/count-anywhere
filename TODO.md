@@ -18,10 +18,17 @@
   CellposeAPI - WorkFlowPlugin - Cellpose
   其中Workflow可以批量导入图片，并建立workflow，批量处理。其中有手动处理节点 Manually Count，来自流中创建等待提交事件。
   用户可以连续的处理这些手动节点，并提交，之后会自动保存或交给下一个节点。
+* ai自动标记模型最终输出的标记应当不止是位置，还有tag和p值（这表示每个tag应当有自己的p property）。
+* 做一个filter可以过滤tag及其p值。
 
 * count anywhere之后会被archieve，然后做成一个插件合并到一个新的类似ImageJ的下一代实验室工具软件。
   为了兼容，提供countanywhere legacy API plugin来提供旧的，专用于count anywhere的兼容。
+* 作为Python编写软件，这个下一代实验室工具应当支持直接编写脚本并eval。
 
 * 一种更简单的——更便于维护和更高效的翻译框架，不允许热重载，让用户自己重启程序。
 
 * 考虑是否需要使用 GPL v3 或 AGPL v3 来替换 GPL v2。 MIT 许可证也是一个选项。
+
+* 将自动生成的文件加入.gitignore并从git中移除。最好在pre-commit中加入检查钩子。
+
+WHY NOT USING GODOT?

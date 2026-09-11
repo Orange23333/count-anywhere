@@ -37,7 +37,7 @@ class ConfigPage(QWidget):
                 self.__tr,
                 text,
                 self.__title,
-                lambda w, t: w.setText(t)
+                lambda w, t: w.setText(t)  # TODO: 在第二次打开配置窗口后，改变语言会触发`Internal C++ object (PySide6.QtWidgets.QLabel) already deleted.`。
             )
         )
         self.__title.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
