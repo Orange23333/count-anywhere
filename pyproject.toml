@@ -21,18 +21,9 @@ license = "GPL-2.0-only"
 license-files = ["LICEN[CS]E*"]
 dependencies = [
     "any-singleton == 1.1.0",
-    #"global-hotkeys",
-    "pynput >= 1.8.0",
     "pyside6 >= 6.10.0",
-    "ruamel-yaml >= 0.19.0",
-]
-
-[dependency-groups]
-dev = [
-    #"coverage",
-    "pytest >= 9.0.0",
-    "pytest-cov >= 7.0.0",
-    "ruff >= 0.15.0"
+    "rtree >= 1.4.0",
+    "ruamel-yaml >= 0.19.0"
 ]
 
 [build-system]
@@ -48,6 +39,3 @@ Issues = "https://github.com/Orange23333/CountAnywhere/issues"
 
 [project.gui-scripts]
 count_anywhere = "count_anywhere:main"
-
-[tool.pyside6-project]
-files = ["main.py", "requirements.txt", "resources.qrc", "widgets/config_window.py", "widgets/about.ui"]
