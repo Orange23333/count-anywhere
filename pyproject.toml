@@ -1,6 +1,6 @@
 [project]
 name = "count-anywhere"
-version = "1.0.2"
+version = "0.1.0a1.dev20260912"
 authors = [
   { name="Orange 233", email="orange_233@foxmail.com" },
 ]
@@ -19,11 +19,24 @@ classifiers = [
 ]
 license = "GPL-2.0-only"
 license-files = ["LICEN[CS]E*"]
-dependencies = [
+
+[dependency-groups]
+base = [
     "any-singleton == 1.1.0",
     "pyside6 >= 6.10.0",
     "rtree >= 1.4.0",
-    "ruamel-yaml >= 0.19.0"
+    "ruamel-yaml >= 0.19.0",
+    #"pywin32",
+]
+dev = [
+    #"coverage",
+    "pytest >= 9.0.0",
+    "pytest-cov >= 7.0.0",
+    "ruff >= 0.15.0",
+]
+all = [
+    {include-group = "base"},
+    {include-group = "dev"}
 ]
 
 [build-system]

@@ -1,14 +1,7 @@
 any-singleton
-
-#global-hotkeys
-#pynput
-
 pyside6
-
-rtree  # Do not support Point.
-#firedrake-rtree  # Requires Cargo (Rust). It will make difficult to install in CN networks.
-
+rtree
 ruamel-yaml
 
 # Windows only:
-pywin32
+#pywin32
