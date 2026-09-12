@@ -11,4 +11,4 @@ rtree  # Do not support Point.
 ruamel-yaml
 
 # Windows only:
-pywin32
+#pywin32
