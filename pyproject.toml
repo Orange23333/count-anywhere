@@ -1,6 +1,6 @@
 [project]
 name = "count-anywhere"
-version = "0.1.0a*.dev*"
+version = "0.1.0a2.dev20260912"
 authors = [
   { name="Orange 233", email="orange_233@foxmail.com" },
 ]
