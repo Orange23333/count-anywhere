@@ -483,6 +483,7 @@ CMakeLists.txt.user*
 
 # === Project ===
 
+/.git/
 /.venv/
 rc_*.py
 
@@ -490,3 +491,7 @@ rc_*.py
 /.jbeval/
 /.qtcreator/
 /.vscode/
+
+# === Private ===
+
+/.ag-log/
