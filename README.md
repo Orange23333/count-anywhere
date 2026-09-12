@@ -12,7 +12,7 @@
 通过 PyPI 安装：
 ```shell
 python -m pip install count-anywhere  # 安装
-python -m count_anywhere  # 启动程序
+python -m count-anywhere  # 启动程序
 ```
 
 ## 基础操作
