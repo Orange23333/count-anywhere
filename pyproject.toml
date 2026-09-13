@@ -1,6 +1,6 @@
 [project]
 name = "count-anywhere"
-version = "0.1.0a3.dev20260912"
+version = "0.1.0aX.devYYYYMMDD"
 authors = [
   { name="Orange 233", email="orange_233@foxmail.com" },
 ]
@@ -41,10 +41,6 @@ dev = [
 #    {include-group = "windows"}
 #]
 
-[build-system]
-requires = ["uv_build >= 0.10.0"]
-build-backend = "uv_build"
-
 [project.urls]
 Homepage = "https://github.com/Orange23333/CountAnywhere"
 Repository = "https://github.com/Orange23333/CountAnywhere"
@@ -52,8 +48,17 @@ Repository = "https://github.com/Orange23333/CountAnywhere"
 Issues = "https://github.com/Orange23333/CountAnywhere/issues"
 #Changelog = "https://github.com/Orange23333/CountAnywhere/blob/main/CHANGELOG.md"
 
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "count_anywhere"
+module-root = "src/"
+namespace = true
+
 [project.gui-scripts]
-count-anywhere = "count_anywhere.__main__:main"
+count-anywhere = "count_anywhere:main"
 
 #[tool.pyside6-project]
 #files = ["main.py", "requirements.txt", "resources.qrc", "widgets/config_window.py", "widgets/about.ui"]

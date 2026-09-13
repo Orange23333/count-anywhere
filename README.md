@@ -12,7 +12,7 @@ View documentation at [count-anywhere.readthedocs.io](https://count-anywhere.rea
 ```shell
 # Installation
 python -m pip install count-anywhere
-python -m count_anywhere
+python -m count-anywhere
 
 # Boot
 count_anywhere
@@ -22,8 +22,6 @@ count_anywhere
 
 程序启动后会挂在系统托盘里。
 ![Icon in system tray. 图标在系统托盘里。](./doc/img/icon_in_system_tray.jpg)
-
-
 
 # Congiurations 配置
 
