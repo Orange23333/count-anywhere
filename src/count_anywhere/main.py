@@ -16,7 +16,7 @@ app: QApplication | None = None
 exit_code: int | None = None
 
 #region Initialization
-import rc_resources  # Initialize Qt Resources.
+import count_anywhere.rc_resources  # Initialize Qt Resources.
 
 app_dir: Path = Path(__file__).resolve().parent
 
