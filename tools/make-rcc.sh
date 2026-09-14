@@ -1,5 +1,5 @@
 dir=$(dirname "$0")
 cd "$dir" || exit
-cd ../src/count_anywhere || exit
+cd ../ || exit
 
-pyside6-rcc resources.qrc -o rc_resources.py
+pyside6-rcc resources.qrc -o src/count_anywhere/rc_resources.py --compress-algo zlib
