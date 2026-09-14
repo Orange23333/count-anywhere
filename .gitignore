@@ -492,6 +492,10 @@ rc_*.py
 /.qtcreator/
 /.vscode/
 
+# === Generated ===
+
+/src/count_anywhere/rc_resources.py
+
 # === Private ===
 
 /.ag-log/
