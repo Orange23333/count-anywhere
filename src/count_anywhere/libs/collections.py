@@ -7,8 +7,6 @@ from typing import Any, Generic, Iterable, Iterator, TypeVar
 
 import rtree
 
-from count_anywhere.libs.markers import Marker
-
 TKey = TypeVar('TKey')  # Type of id. Could be int, str and so on.
 TValue = TypeVar('TValue')  # Type of object to be stored.
 TPrecision = TypeVar('TPrecision')  # Type of precision. Could be int, float and so on.
